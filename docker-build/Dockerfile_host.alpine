@@ -1,0 +1,22 @@
+FROM alpine:latest
+MAINTAINER Julien MANTEAU
+LABEL Name=evpnlab-net Version=1.0.0
+RUN apk update
+RUN apk add sudo
+RUN apk add nmap tshark tcpdump mtr iperf3 htop fping curl openssh libteam open-lldp bash python3 --no-cache && rm -f /var/cache/apk/*
+COPY .bashrc /root/.bashrc
+
+RUN adduser -u 1000 -G wheel -D alpine && \
+    echo "%wheel ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+COPY id_rsa.pub /root/id_rsa.pub
+RUN mkdir -p /root/.ssh
+RUN cat /root/id_rsa.pub >> /root/.ssh/authorized_keys
+RUN ssh-keygen -A
+#  using "*" as password hash works as expected without leaving the system vulnerable. Avoid "User root not allowed because account is locked"
+RUN sed -i -e 's/^root:!:/root:*:/' /etc/shadow
+
+COPY docker-start.alpine.host /usr/sbin/docker-start
+RUN chmod +x /usr/sbin/docker-start
+ENTRYPOINT ["/usr/sbin/docker-start"]
+

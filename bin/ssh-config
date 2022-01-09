@@ -1,0 +1,277 @@
+#!/usr/bin/env python
+
+#
+#   Copyright (c) 2012, Wim Thys <wim.thys@zardof.be>
+#   All rights reserved.
+#
+#   Redistribution and use in source and binary forms, with or without
+#   modification, are permitted provided that the following conditions are met:
+#
+#   * Redistributions of source code must retain the above copyright notice, this
+#     list of conditions and the following disclaimer.
+#   * Redistributions in binary form must reproduce the above copyright notice,
+#     this list of conditions and the following disclaimer in the documentation
+#     and/or other materials provided with the distribution.
+#
+#   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+#   AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+#   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+#   ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+#   LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+#   CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+#   SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+#   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+#   CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+#   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+#   POSSIBILITY OF SUCH DAMAGE.
+#
+
+import sys
+import os
+
+from sshconfig import SshConfig, SshConfigEntry, load_sshconfig
+
+from argparse import ArgumentParser
+
+class OutFormats:
+    SSH = 1
+    MACHINE = 2
+
+def format_ssh(config, args):
+    print config
+
+def format_machine(config, args):
+    f = "%(host)s%(delim)s%(priority)d%(delim)s%(option)s%(delim)s%(value)s" 
+    hosts = [None]
+    hosts.extend(config.hosts())
+    for h in hosts:
+        entry = config.get(h)
+        if not entry is None:
+            p = entry.priority()
+            hn = h
+            if hn is None:
+                hn = ""
+            for opt, val in entry.items():
+                print f % {"host": hn, "delim": args.delimiter, "priority": p, "option": opt, "value": val}
+
+FORMATS = {}
+FORMATS[OutFormats.SSH] = format_ssh
+FORMATS[OutFormats.MACHINE] = format_machine
+
+def format_options(options):
+    ropts = {}
+    if options is None:
+        return ropts
+    for opt in options:
+        k = opt.split("=")
+        if len(k) > 1:
+            ropts[k[0]] = k[1]
+        else:
+            ropts[k[0]] = None
+
+    return ropts
+
+def ssh_list(args):
+    sshfile = opts.file
+    outfile = sshfile
+    config = None
+    if sshfile is None:
+        config = load_sshconfig(os.path.expanduser("~/.ssh/config"))
+    else:
+        config = load_sshconfig(sshfile)
+
+    host = args.hostname
+    options = args.option
+    ropts = format_options(options)
+    if host is None:
+        hosts = []
+        if not config.get(None) is None:
+            hosts.append(None)
+        hosts.extend(config.hosts())
+        if len(ropts) > 0:
+            displayed = SshConfig()
+            for h in hosts:
+                entry = config.get(h)
+                he = SshConfigEntry(entry.priority())
+                for opt, comp in ropts.items():
+                    val = entry.get(opt)
+                    if comp is None or val == comp:
+                        he.set(opt, val)
+                if len(he) > 0:
+                    displayed.set(h, he)
+            FORMATS[args.format](displayed, args)
+        else:
+            displayed = SshConfig()
+            for h in hosts:
+                entry = config.get(h)
+                he = SshConfigEntry(entry.priority())
+                for opt, val in entry.items():
+                    he.set(opt, val)
+                if len(he) > 0:
+                    displayed.set(h, he)
+            FORMATS[opts.format](displayed, args)
+    else:
+        entry = config.get(host)
+        if entry is None:
+            sys.exit("Host %s cannot be found" % host)
+        if len(ropts) > 0:
+            for opt, comp in ropts.items():
+                val = entry.get(opt)
+                if comp is None or val == comp:
+                    print "%s = %s" % (opt, val)
+        else:
+            for opt, val in entry.items():
+                print "%s = %s" % (opt, val)
+
+def ssh_test(args):
+    sshfile = opts.file
+    outfile = sshfile
+    config = None
+    if sshfile is None:
+        config = load_sshconfig(os.path.expanduser("~/.ssh/config"))
+    else:
+        config = load_sshconfig(sshfile)
+
+    host = args.hostname
+    options = args.option
+    ropts = format_options(options)
+    if host is None:
+        hosts = []
+        if not config.get(None) is None:
+            hosts.append(None)
+        hosts.extend(config.hosts())
+        if len(ropts) > 0:
+            for h in hosts:
+                entry = config.get(h)
+                for opt, comp in ropts.items():
+                    if opt in entry and (comp is None or entry.get(opt) == comp):
+                        sys.exit(0)
+            sys.exit(1)
+        else:
+            if len(config.hosts()) > 0:
+                sys.exit(0)
+            else:
+                sys.exit(1)
+    else:
+        entry = config.get(host)
+        if entry is None:
+            sys.exit(1)
+        if len(ropts) > 0:
+            for opt, comp in ropts.items():
+                if opt in entry and (comp is None or entry.get(opt) == comp):
+                    sys.exit(0)
+            sys.exit(1)
+        else:
+            sys.exit(1)
+
+def ssh_delete(args):
+    sshfile = opts.file
+    
+    config = None
+    if sshfile is None:
+        config = load_sshconfig(os.path.expanduser("~/.ssh/config"))
+        outfile = os.path.expanduser("~/.ssh/config")
+    else:
+        config = load_sshconfig(sshfile)
+        outfile = sshfile
+
+    host = args.hostname
+    options = args.option
+    ropts = format_options(options)
+    if host is None:
+        hosts = []
+        if host is None:
+            hosts.append(None)
+        hosts.extend(config.hosts())
+        if len(ropts) > 0:
+            for h in hosts:
+                entry = config.get(h)
+                for opt in ropts:
+                    entry.remove(opt)
+            config.save(outfile)
+        else:
+            sys.exit("No options specified")
+    else:
+        entry = config.get(host)
+        if entry is None:
+            sys.exit(0)
+        if len(ropts) > 0:
+            entry.remove(*ropts.keys())
+            config.save(outfile)
+        else:
+            config.remove(host)
+            config.save(outfile)
+
+    
+def ssh_set(args):
+    sshfile = opts.file
+    outfile = sshfile
+    config = None
+    if sshfile is None:
+        config = load_sshconfig(os.path.expanduser("~/.ssh/config"))
+    else:
+        config = load_sshconfig(sshfile)
+
+    host = args.hostname
+    options = args.option
+    ropts = format_options(options)
+    if len(ropts) == 0:
+        sys.exit("No options specified")
+    else:
+        config.set(host, **ropts)
+        config.save(outfile)
+
+
+PARSER = ArgumentParser(description="Manage your ssh_config file.")
+PARSER.set_defaults(format=OutFormats.SSH)
+
+
+SUBS = PARSER.add_mutually_exclusive_group(required=True)
+SUBS.add_argument("-l", "--list", action="store_const",
+        dest="action",const=ssh_list, help=" ".join(["List options. If",
+            "combined with a hostname a hostname, show only the entries for", 
+            "that hostname. If also combined with options, only list the", 
+            "hosts with that option and the value of the option."]))
+
+SUBS.add_argument("-s", "--set", action="store_const",
+        dest="action",const=ssh_set, help=" ".join(["Set options. If no",
+            "hostname is specified, set the default."]))
+
+SUBS.add_argument("-d", "--delete", action="store_const",
+        dest="action",const=ssh_delete, help=" ".join(["Remove an option or",
+            "host. If the option did not exist, exit. If no options are",
+            "specified, delete the host. If the last options is removed,",
+            "the host entry is also removed."]))
+
+SUBS.add_argument("-t", "--test", action="store_const",
+        dest="action",const=ssh_test, help=" ".join(["The same behaviour", 
+        "as --list but does not produce output and returns succes if --list",
+        "would have produced output."]))
+
+PARSER.add_argument("-H", "--hostname", dest="hostname", help="Use this host")
+PARSER.add_argument("-o", "--option", action="append", dest="option", 
+    help=" ".join(["Option to set, remove or query. When setting, use the", 
+    "format OptionName=OptionValue. Can be supplied multiple times."]))
+
+PARSER.add_argument("-f", "--file", dest="file", 
+    help=" ".join(["The ssh_config file to use. If omitted, use the default",
+        "ssh_config file."]))
+
+PARSER.add_argument("-S", "--ssh", dest="format", action="store_const",
+        const=OutFormats.SSH, help=" ".join(["Use ssh_config compatible",
+            "output. Useful if you want to use the output for constructing",
+            "a new ssh_config file"]))
+
+PARSER.add_argument("-p", dest="format", action="store_const",
+        const=OutFormats.MACHINE, help=" ".join(["Use a machine readable",
+            "output. It will use ':' as a delimiter, unless otherwise",
+            "specified. The fields will be in the form",
+            "<hostname>:<priority>:<option>:<value>, with ':' being",
+            "replaced by your delimiter of choice."]))
+PARSER.add_argument("-D", "--delimiter", dest="delimiter", default=":",
+        help="Delimiter to use when using -p.")
+
+
+opts= PARSER.parse_args()
+
+opts.action(opts)

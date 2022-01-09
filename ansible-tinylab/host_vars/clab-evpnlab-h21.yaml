@@ -1,0 +1,4 @@
+interfaces:
+  eth1:
+    ip_address: 10.1.10.21/25
+    description: "Vlan110"

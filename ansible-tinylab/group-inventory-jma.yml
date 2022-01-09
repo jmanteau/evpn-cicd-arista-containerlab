@@ -1,0 +1,35 @@
+all:
+  children:
+    AVD:
+      children:
+        FABRIC_A:
+          children:
+            FABA_SPINES:
+              hosts:
+                clab-evpnlab-spine1:
+            FABA_L3LEAFS:
+              children:
+                FABA_LEAF1:
+                  hosts:
+                    clab-evpnlab-leaf1:
+                FABA_LEAF2:
+                  hosts:
+                    clab-evpnlab-leaf2:
+      FABA_TENANTS_NETWORKS:
+        children:
+          FABA_L3LEAFS:
+      FABA_SERVERS:
+        children:
+          FABA_L3LEAFS:
+
+      vars:
+        ansible_connection: httpapi
+        ansible_httpapi_use_ssl: true
+        ansible_httpapi_validate_certs: false
+        ansible_user: admin
+        ansible_password: admin
+        ansible_become: true
+        ansible_become_method: enable
+        ansible_network_os: eos
+        ansible_httpapi_port: 443
+        ansible_python_interpreter: $(which python3)

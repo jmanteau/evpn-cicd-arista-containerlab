@@ -1,0 +1,19 @@
+---
+manufacturer: Arista
+model: cEOS-LAB
+slug: ceos-lab
+u_height: 1
+is_full_depth: false
+comments: ''
+interfaces:
+  - name: Ethernet1
+    type: 1000base-t
+  - name: Ethernet2
+    type: 1000base-t
+  - name: Ethernet3
+    type: 1000base-t
+  - name: Ethernet4
+    type: 1000base-t
+  - name: Management0
+    type: 1000base-t
+    mgmt_only: true

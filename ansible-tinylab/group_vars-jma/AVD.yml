@@ -1,0 +1,56 @@
+# local users
+local_users:
+  # Username with no password configured
+  admin:
+    privilege: 15
+    role: network-admin
+    no_password: true
+
+  # Username with a password
+  demo:
+    privilege: 15
+    role: network-admin
+    sha512_password: "< Provide SHA512 HASH for password >"
+
+# OOB Management network default gateway.
+mgmt_gateway: 10.73.254.253
+mgmt_destination_networks:
+  - 10.255.2.0/24
+  - 10.255.3.0/24
+  - 0.0.0.0/0
+
+# dns servers.
+name_servers:
+  - 1.1.1.1
+  - 8.8.8.8
+
+# NTP Servers IP or DNS name, first NTP server will be prefered, and sourced from Managment VRF
+ntp:
+  servers:
+  - name: uk.pool.ntp.org
+    preferred: true
+    vrf: MGMT
+  - name: fr.pool.ntp.org
+    vrf: MGMT
+
+
+# Point to Point Network Summary range, assigned as /31 for each
+# uplink interfaces
+# Assign range larger then total [spines * total potential leafs * 2]
+underlay_p2p_network_summary: 172.31.255.0/24
+
+# IP address range for evpn loopback for all switches in fabric,
+# assigned as /32s
+# Assign range larger then total spines + total leafs switches
+overlay_loopback_network_summary: 192.168.255.0/24
+
+# VTEP VXLAN Tunnel source loopback IP for leaf switches, assigned in /32s
+# Assign range larger then total leaf switches
+vtep_loopback_network_summary: 192.168.254.0/24
+
+# mlag pair IP assignment - assign blocks - Assign range larger then
+# total spines + total leafs switches
+mlag_ips:
+  leaf_peer_l3: 10.255.251.0/24
+  mlag_peer: 10.255.252.0/24
+

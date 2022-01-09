@@ -1,0 +1,14 @@
+packer_cache
+clab-evpnlab
+.vagrant
+containerlab.pem
+cEOS-lab-*.tar.xz
+*.pyc
+.DS_Store
+.vscode
+ansible-tinylab/reports/
+ansible-tinylab/intended/
+ansible-tinylab/documentation/
+.evpnlab*.yaml
+.env
+.env_Makefile

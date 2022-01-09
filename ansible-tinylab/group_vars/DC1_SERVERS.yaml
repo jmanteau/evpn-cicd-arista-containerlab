@@ -1,0 +1,35 @@
+---
+port_profiles:
+  Tenant_A_pod1_clientA:
+    mode: access
+    vlans: "110"
+  Tenant_A_pod1_clientB:
+    mode: access
+    vlans: "111"
+  Tenant_A_pod2_clientA:
+    mode: access
+    vlans: "112"
+  Tenant_A_pod2_clientB:
+    mode: access
+    vlans: "113"
+
+servers:
+  h11:
+    adapters:
+      - endpoint_ports: [Eth1]
+        switch_ports: [Ethernet3]
+        switches: [clab-evpnlab-leaf1]
+        profile: Tenant_A_pod1_clientA
+  h21:
+    adapters:
+      - endpoint_ports: [Eth1]
+        switch_ports: [Ethernet3]
+        switches: [clab-evpnlab-leaf2]
+        profile: Tenant_A_pod1_clientA
+  h12:
+    adapters:
+      - endpoint_ports: [Eth1]
+        switch_ports: [Ethernet4]
+        switches: [clab-evpnlab-leaf1]
+        profile: Tenant_A_pod1_clientB
+   

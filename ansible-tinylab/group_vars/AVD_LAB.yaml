@@ -1,0 +1,51 @@
+---
+local_users:
+  admin:
+    privilege: 15
+    role: network-admin
+    sha512_password: "$6$7GTxsrRjnwheeKfR$zhJ8qycVjAJz41rf5JRSfWIzp93IL5WL7sMS/Taz1yfShz.MAnoajCf7R2n1/EZW7PN5QA3Huayl0lVQesBYN1"
+
+name_servers:
+  - 1.1.1.1
+  - 8.8.8.8
+
+ntp:
+  servers:
+  - name: time.google.com
+    preferred: true
+    vrf: MGMT
+
+service_routing_protocols_model: multi-agent
+
+spanning_tree_mode: mstp
+
+ip_routing: true
+
+# Use 1500 for vEOS, 9200 for hardware platforms
+underlay_p2p_link_mtu: 1500
+
+# hardcoding management0 for cEOS lab compatibility (default: Management1)
+mgmt_interface: Management0
+
+management_api_http:
+  enable_https: true
+
+management_api_gnmi:
+  enable_vrfs:
+    MGMT:
+
+mgmt_gateway: 127.0.0.1
+
+lldp:
+  tlvs:
+    - name: management-address
+      transmit: false
+    - name: system-description
+      transmit: false
+
+###  EOS Aliases ###
+aliases: |
+  alias shimet show bgp evpn route-type imet detail | awk '/for imet/ { print "VNI: " $7 ", VTEP: " $8, "RD: " $11 }'
+  alias sip show bgp evpn route-type mac-ip detail | awk '/for mac-ip/ { if (NF == 11) { print "RD: " $11, "VNI: " $7, "MAC: " $8 } else { print "RD: " $12, "VNI: " $7, "MAC: " $8, "IP: " $9 } }' | sed -e s/,//g
+  alias shprefix show bgp evpn route-type ip-prefix ipv4 detail | awk '/for ip-prefix/ { print "ip-prefix: " $7, "RD: " $10 }'
+  alias shevpn run show interface vxlan1; show bgp evpn summary; sh bgp evpn instance

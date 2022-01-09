@@ -1,0 +1,38 @@
+
+- name: Build Switch configuration
+  hosts: linux
+  tasks:
+
+    # - name: Print some debug information
+    #   vars:
+    #     msg: |
+    #       Module Variables ("vars"):
+    #       --------------------------------
+    #       {{ vars | to_nice_json }}
+    #       ================================
+
+    #       Environment Variables ("environment"):
+    #       --------------------------------
+    #       {{ environment | to_nice_json }}
+    #       ================================
+
+    #       Group Variables ("groups"):
+    #       --------------------------------
+    #       {{ groups | to_nice_json }}
+    #       ================================
+
+    #       Host Variables ("hostvars"):
+    #       --------------------------------
+    #       {{ hostvars | to_nice_json }}
+    #       ================================
+    #   debug:
+    #     msg: "{{ msg.split('\n') }}"
+    #   tags: debug_info
+ 
+    - name: Add an Ethernet connection with static IP configuration
+      ansible.builtin.shell: |      
+        ip link set {{ item }} up || true
+        ip address add {{ interfaces[item].ip_address }} dev {{ item }}  || true
+        ip route add 10.0.0.0/8 via {{ interfaces[item].ip_address | ansible.netcommon.ipaddr(1) | ansible.netcommon.ipaddr('address') }} || true
+      with_items: "{{ interfaces.keys() | list }}"
+#      debugger: on_failed

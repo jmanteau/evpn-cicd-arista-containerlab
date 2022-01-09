@@ -1,0 +1,54 @@
+name: evpnlab
+
+
+mgmt:
+  network: clabmgmt                # management network name
+  ipv4_subnet: 172.100.100.0/24       # ipv4 range
+
+topology:
+  kinds:
+    ceos:
+      image: ceosimage:4.26.4M
+      startup-config: templates/ceos.cfg
+    linux:
+      image: evpnlab-host:latest
+
+  nodes:
+    leaf1:
+      kind: ceos
+      mgmt_ipv4: 172.100.100.4
+    leaf2:
+      kind: ceos
+      mgmt_ipv4: 172.100.100.5
+    spine1:
+      kind: ceos
+      mgmt_ipv4: 172.100.100.11
+    spine2:
+      kind: ceos
+      mgmt_ipv4: 172.100.100.12
+    h11:
+      kind: linux
+      mgmt_ipv4: 172.100.100.21
+    h12:
+      kind: linux
+      mgmt_ipv4: 172.100.100.22
+    h21:
+      kind: linux
+      mgmt_ipv4: 172.100.100.23
+
+
+  links:
+   # spine leaf links
+    - endpoints: ["leaf1:eth1","spine1:eth1"]
+    - endpoints: ["leaf2:eth1","spine1:eth2"]
+    - endpoints: ["leaf1:eth2","spine2:eth1"]
+    - endpoints: ["leaf2:eth2","spine2:eth2"]
+    # Host connections
+    - endpoints: ["h11:eth1","leaf1:eth3"]
+    - endpoints: ["h12:eth1","leaf1:eth4"]
+    - endpoints: ["h21:eth1","leaf2:eth3"]
+
+
+
+
+

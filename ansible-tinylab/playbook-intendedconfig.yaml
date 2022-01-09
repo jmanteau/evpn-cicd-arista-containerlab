@@ -1,0 +1,11 @@
+- name: Build Switch configuration
+  hosts: DC1_FABRIC
+  tasks:
+    - name: generate intend variables
+      tags: [build]
+      import_role:
+        name: arista.avd.eos_designs
+    - name: generate device intended config and documention
+      tags: [build]
+      import_role:
+        name: arista.avd.eos_cli_config_gen

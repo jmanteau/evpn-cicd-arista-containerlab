@@ -1,0 +1,33 @@
+FROM debian:stable
+MAINTAINER Julien MANTEAU
+LABEL Name=evpnlab-net Version=1.0.0
+ARG DEBIAN_FRONTEND=noninteractive
+ARG APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=DontWarn
+
+
+RUN apt-get update -o Acquire::Max-FutureTime=86400 
+
+RUN apt-get install -y  --no-install-recommends libpcre3-dev apt-transport-https ca-certificates curl wget logrotate libc-ares2 libjson-c3 vim procps libreadline7 gnupg2 lsb-release apt-utils 
+
+RUN apt-get install -y --no-install-recommends nmap tshark tcpdump mtr iperf iperf3 htop dnsutils fping curl  
+
+
+
+RUN curl -s https://deb.frrouting.org/frr/keys.asc | apt-key add -
+RUN echo deb https://deb.frrouting.org/frr $(lsb_release -s -c) frr-stable | tee -a /etc/apt/sources.list.d/frr.list
+RUN apt-get update -o Acquire::Max-FutureTime=86400 
+RUN apt-get install -y --no-install-recommends frr frr-pythontools
+RUN apt-get install -y --no-install-recommends openssh-server
+
+COPY .inputrc /root/.inputrc
+
+#RUN touch /etc/frr/vtysh.conf
+RUN sed -i s/bgpd=no/bgpd=yes/g /etc/frr/daemons
+
+RUN apt-get autoclean
+
+COPY docker-start /usr/sbin/docker-start
+RUN chmod +x /usr/sbin/docker-start
+
+ENTRYPOINT ["/usr/sbin/docker-start"]
+

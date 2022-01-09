@@ -1,0 +1,42 @@
+graph evpnlab {
+ "leaf1" [function="leaf" os="alpine-netlab" memory="200" vagrant="vagrant" ]
+ "leaf2" [function="leaf" os="alpine-netlab" memory="200" vagrant="vagrant" ]
+ "leaf3" [function="leaf" os="alpine-netlab" memory="200" vagrant="vagrant" ]
+ "spine1" [function="spine" os="alpine-netlab" memory="200" vagrant="vagrant" ]
+ "spine2" [function="spine" os="alpine-netlab" memory="200" vagrant="vagrant" ]
+ "h11" [function="host" memory="128" vagrant="vagrant" ]
+ "h12" [function="host" memory="128" vagrant="vagrant" ]
+ "h13" [function="host" memory="128" vagrant="vagrant" ]
+ "h21" [function="host" memory="128" vagrant="vagrant" ]
+ "h22" [function="host" memory="128" vagrant="vagrant" ]
+ "h31" [function="host" memory="128" vagrant="vagrant" ]
+ "h0" [function="host" memory="128" vagrant="vagrant" ]
+ "borderleaf" [function="leaf" os="alpine-netlab" memory="200" vagrant="vagrant" ]
+ "core" [function="exit" os="alpine-netlab" memory="200" vagrant="vagrant" ]
+ "firewall" [function="exit" os="alpine-netlab" memory="200" vagrant="vagrant" ]
+
+
+ "leaf1":"swp1" -- "spine1":"swp1"
+ "leaf2":"swp1" -- "spine1":"swp2"
+ "leaf3":"swp1" -- "spine1":"swp3"
+ "leaf1":"swp2" -- "spine2":"swp1"
+ "leaf2":"swp2" -- "spine2":"swp2"
+ "leaf3":"swp2" -- "spine2":"swp3"
+
+ "spine1":"swp10" -- "borderleaf":"swp1"
+ "spine2":"swp10" -- "borderleaf":"swp2"
+
+ "core":"swp1" -- "borderleaf":"swp3"
+ "firewall":"swp1" -- "borderleaf":"swp4"
+ "core":"swp2" -- "firewall":"swp2"
+
+
+ "h11":"eth1" -- "leaf1":"eth1" [left_mac="00:03:00:11:11:01"]
+ "h12":"eth1" -- "leaf2":"eth1" [left_mac="00:03:00:11:11:02"]
+ "h13":"eth1" -- "leaf3":"eth12" [left_mac="00:03:00:22:22:01"]
+ "h21":"eth1" -- "leaf1":"eth2" [left_mac="00:03:00:22:22:02"]
+ "h22":"eth1" -- "leaf3":"eth2" [left_mac="00:03:00:33:33:01"]
+ "h31":"eth1" -- "leaf3":"eth3" [left_mac="00:03:00:33:33:02"]
+ "h0":"eth1" -- "core":"eth1" [left_mac="00:03:00:44:44:01"]
+
+}

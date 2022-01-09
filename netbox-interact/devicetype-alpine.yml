@@ -1,0 +1,15 @@
+---
+manufacturer: Linux
+model: Alpine
+slug: alpine
+u_height: 1
+is_full_depth: false
+comments: ''
+interfaces:
+  - name: eth0
+    type: 1000base-t
+    mgmt_only: true
+  - name: eth1
+    type: 1000base-t
+
+

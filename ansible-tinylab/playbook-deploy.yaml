@@ -1,0 +1,22 @@
+- name: Build Switch configuration
+  hosts: DC1_FABRIC
+  tasks:
+
+    - name: generate intend variables
+      tags: [build]
+      import_role:
+        name: arista.avd.eos_designs
+
+    - name: generate device intended config and documention
+      tags: [build]
+      import_role:
+        name: arista.avd.eos_cli_config_gen
+
+    - name: deploy configuration via eAPI
+      ignore_errors: True
+      import_role:
+        name: arista.avd.eos_config_deploy_eapi
+
+    - name: audit fabric state using EOS eAPI connection
+      import_role: 
+        name: arista.avd.eos_validate_state

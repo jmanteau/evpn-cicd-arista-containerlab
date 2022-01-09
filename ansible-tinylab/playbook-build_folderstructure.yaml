@@ -1,0 +1,9 @@
+- name: Build Switch configuration
+  hosts: AVD
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: 'build local folders for output'
+      tags: [build]
+      import_role:
+        name: arista.avd.build_output_folders

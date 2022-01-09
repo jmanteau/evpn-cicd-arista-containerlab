@@ -1,0 +1,42 @@
+---
+tenants:
+  # Tenant A VRFs / VLANs
+  Tenant_A:
+    mac_vrf_vni_base: 10000
+    vrfs:
+      Tenant_A_Zone:
+        vrf_vni: 10
+        vtep_diagnostic:
+          loopback: 100
+          loopback_ip_range: 10.255.1.0/24
+        svis:
+          110:
+            name: Tenant_A_Zone_1
+            tags: [ odd_network, onehundred ]
+            enabled: true
+            ip_address_virtual: 10.1.10.1/24
+          111:
+            name: Tenant_A_Zone_2
+            tags: [ even_network, onehundred ]
+            enabled: true
+            ip_address_virtual: 10.1.11.1/25
+  Tenant_B:
+    mac_vrf_vni_base: 10000
+    vrfs:
+      Tenant_B_Zone:
+        vrf_vni: 20
+        vtep_diagnostic:
+          loopback: 100
+          loopback_ip_range: 10.255.1.0/24
+        svis:
+          210:
+            name: Tenant_A_Zone_3
+            tags: [ odd_network, twohundred ]
+            enabled: true
+            ip_address_virtual: 10.2.10.1/26
+          211:
+            name: Tenant_A_Zone_4
+            tags: [ even_network, twohundred ]
+            enabled: true
+            ip_address_virtual: 10.2.11.1/27                
+

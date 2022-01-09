@@ -1,0 +1,30 @@
+FROM debian:stable
+LABEL authors="Julien MANTEAU"
+LABEL name=evpnlab-host 
+LABEL version=1.0.5
+
+ARG DEBIAN_FRONTEND=noninteractive
+ARG APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=DontWarn
+
+RUN apt-get update 
+#RUN apt-get update -o Acquire::Max-FutureTime=86400 
+
+
+RUN apt-get install -y --no-install-recommends nmap tshark tcpdump mtr iperf iperf3 htop dnsutils fping curl vim python3-pip
+RUN apt-get install -y --no-install-recommends iproute2
+# RUN apt-get install -y --no-install-recommends network-manager
+
+RUN apt-get install -y --no-install-recommends openssh-server
+
+RUN apt-get autoclean
+RUN mkdir -p /etc/network
+RUN touch /etc/network/interfaces
+
+COPY id_rsa.pub /root/id_rsa.pub
+RUN mkdir -p /root/.ssh
+RUN cat /root/id_rsa.pub >> /root/.ssh/authorized_keys
+
+COPY docker-start.host /usr/sbin/docker-start
+RUN chmod +x /usr/sbin/docker-start
+ENTRYPOINT ["/usr/sbin/docker-start"]
+
