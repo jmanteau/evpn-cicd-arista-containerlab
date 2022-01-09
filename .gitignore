@@ -12,3 +12,4 @@ ansible-tinylab/documentation/
 .evpnlab*.yaml
 .env
 .env_Makefile
+bin/sshconfig.pyc

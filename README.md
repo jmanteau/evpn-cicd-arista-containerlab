@@ -129,3 +129,8 @@ awslogin:             Login to AWS. Don't forget to copy paste the output as env
 awsexportenv:         Export AWS Creds to Var
 ```
 
+
+
+## Example
+
+You can find [here an example](docs/exampletinylab.html) where a local vm is created and the lab is run and some commands are tested.

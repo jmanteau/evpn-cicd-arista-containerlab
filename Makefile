@@ -103,6 +103,7 @@ destroyaws:
 ## 1️⃣️  (Laptop 👨‍💻) 🎬 build and/or launch the local VM
 startuplocal: cmd-exists-vagrant
 	vagrant up localvm
+	echo "\n " >> ~/.ssh/config
 	vagrant ssh-config localvm --host vagrantlab >> $(SSHFILE)
 	vagrant ssh localvm
 
@@ -165,6 +166,7 @@ awsvmstatus:
 ## Spin up an AWS instance
 awsvmup: cmd-exists-vagrant
 	vagrant up awsvm
+	echo "\n " >> ~/.ssh/config
 	vagrant ssh-config awsvm --host vagrantlab >> $(SSHFILE)
 	vagrant ssh awsvm
 
