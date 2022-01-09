@@ -133,4 +133,4 @@ awsexportenv:         Export AWS Creds to Var
 
 ## Example
 
-You can find [here an example](docs/exampletinylab.html) where a local vm is created and the lab is run and some commands are tested.
+You can find [here an example](https://jmanteau.github.io/evpn-cicd-arista-containerlab/tinylabexample.html) where a local vm is created and the lab is run and some commands are tested.
