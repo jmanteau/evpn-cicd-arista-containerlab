@@ -1,0 +1,22 @@
+{
+    "local-routing":
+    {
+        "static-routes":
+        {
+            "static":
+            [
+                {
+                    "prefix": "0.0.0.0/0",
+                    "vrf": "{{ VRF_MANAGEMENT }}",
+                    "next-hops":
+                    [
+                        {
+                            "next-hop": "127.0.0.1",
+                            "metric": 200
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}

@@ -15,8 +15,7 @@ Status:
 - [x] Simple Lab with Containerlab (Arista for network devices, Custom Alpine for hosts)
 - [x] Simple Lab configured with [Ansible Collection For Arista Validated Designs]()[¶](https://avd.sh/en/latest/#ansible-collection-for-arista-validated-designs)
 - [x] Helper for CLI/SSH/PCAP on the devices. The capture happen on the host and launch wireshark on the laptop/destkop for easier analysis (the data transfer occurs over a ssh tunnel)
-- [ ] Netbox populated with data model reprensenting the Lab configuration (80% done)
-- [ ] Export of Netbox to the structured config part of AVD
+- [⌛] Export of Netbox to the structured config part of AVD
 - [ ] Netbox script to add a new network
 - [ ] CICD with Gitea and Woodpecker to run AVD on Netbox datamodel change
 

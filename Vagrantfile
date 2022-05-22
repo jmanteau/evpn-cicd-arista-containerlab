@@ -73,7 +73,7 @@ Vagrant.configure('2') do |config|
       domain.customize ["modifyvm", :id, "--nested-hw-virt", "on"]
     end
     localvm.vm.synced_folder ".", "/home/vagrant/evpn-cicd-arista-containerlab"
-    localvm.vm.network "forwarded_port", guest: 8080, host: 8080, protocol: "tcp"
+    localvm.vm.network "forwarded_port", guest: 8000, host: 8000, protocol: "tcp"
     localvm.vm.network "forwarded_port", guest: 3000, host: 3000, protocol: "tcp"
   
     # Enable provisioning with a shell script. Additional provisioners such as

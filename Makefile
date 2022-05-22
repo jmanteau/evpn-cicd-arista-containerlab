@@ -197,7 +197,7 @@ images:
 
 ## ▶️  Start the tiny lab (3 nodes)
 tinylabup: 
-	sudo containerlab deploy --topo evpnlab-tiny.yml
+	sudo containerlab deploy --topo evpnlab-tiny.yml --reconfigure
 
 ## ⏹️  Stop the lab (3 nodes)
 tinylabdown: 
@@ -256,6 +256,10 @@ ansible-nethost: guard-LAB
 
 ## -- Tooling --
 
+## Tooling setup
+tooling-setup:
+	cd netbox-interact && pip3 install -r requirements.txt
+
 ## Start Netbox / Gitea / Woodpecker
 tooling-start: netbox-start gitea-start woodpecker-start
 
@@ -268,15 +272,22 @@ netbox-update:
 
 ## Start Netbox
 netbox-start:
-	cd netbox-docker && docker-compose up -d
+	cd netbox-docker && sudo docker-compose up -d
 
 ## Stop Netbox
 netbox-stop:
-	cd netbox-docker && docker-compose stop
+	cd netbox-docker && sudo docker-compose stop
+
+## URL Netbox:
+netbox-url:
+	cd netbox-docker && docker-compose port netbox 8080
 
 ## Logs Netbox
 netbox-logs: 
-	cd netbox-docker && docker-compose logs -f
+	cd netbox-docker && sudo docker-compose logs -f
+
+netbox-provision:
+	cd netbox-interact && python3 netbox_populate.py
 
 ## Start Woodpecker
 woodpecker-start:
