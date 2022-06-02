@@ -60,8 +60,6 @@ for user in users:
     structured_config["local_users"][user]["sha512_password"]= users[user]['password']
     structured_config["local_users"][user]["role"]= users[user]['role']
 
-structured_config["local_users"] #TODO
-
 
 structured_config["vrfs"] #TODO
 

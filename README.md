@@ -31,13 +31,19 @@ Status:
 
 Installation of [VirtualBox](https://www.virtualbox.org/wiki/Downloads), [Packer](https://www.packer.io/downloads), [Vagrant](https://www.vagrantup.com/downloads)  with the appropriate methods based on your OS.
 
-### Using it
+### First usage
 
 Copy the `.env.template` to `.env` and modify accordingly the variables for your setup.
 
 You can also create the `.env_Makefile` and fulfill with the function needed for AWS auth in your setup. Or you can just copy paste the AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY/AWS_SESSION_TOKEN as environment varaiable.
 
-Then you just have to follow the help:
+```
+make vagrantinstall
+make startuplocal
+```
+
+### Using it
+You just have to follow the help:
 
 ```
 ❯ make                                                                                                                                                                       

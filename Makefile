@@ -286,6 +286,7 @@ netbox-url:
 netbox-logs: 
 	cd netbox-docker && sudo docker-compose logs -f
 
+## Populate Netbox
 netbox-provision:
 	cd netbox-interact && python3 netbox_populate.py
 

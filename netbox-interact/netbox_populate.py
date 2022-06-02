@@ -600,7 +600,6 @@ def provision_networks():
         tenant=tenant_rainbow.id,
     )
 
- 
 
     for leaf in leafs:
         vxlan1 = nb.dcim.interfaces.get(device=leaf, name="Vxlan1")
