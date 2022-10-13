@@ -3,6 +3,7 @@ from pprint import pprint
 from collections import defaultdict
 import yaml
 import pynetbox
+import requests
 
 def get_netbox():
     """
@@ -53,12 +54,13 @@ structured_config["name_server"] #TODO
 structured_config["spanning_tree"]["mode"] = "mstp"
 structured_config["spanning_tree"]["mst_instances"]["0"]["priority"] = 4096
 
-userscf= nb.extras.config_contexts.get(name='local-users').data
+userscf= nb.extras.config_contexts.get(name='local-users').data  # TODO Replace with config context attached to the devices
 users= userscf["system"]["aaa"]["authentication"]["users"]
-for user in users:
-    structured_config["local_users"][user]["privilege"]= users[user]['privilege']
-    structured_config["local_users"][user]["sha512_password"]= users[user]['password']
-    structured_config["local_users"][user]["role"]= users[user]['role']
+for userdata in users:
+    user= userdata["username"]
+    structured_config["local_users"][user]["privilege"]= userdata['privilege']
+    structured_config["local_users"][user]["sha512_password"]= userdata['password']
+    structured_config["local_users"][user]["role"]= userdata['role']
 
 
 structured_config["vrfs"] #TODO

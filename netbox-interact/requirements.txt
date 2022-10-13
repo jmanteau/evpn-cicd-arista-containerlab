@@ -1,3 +1,4 @@
 pynetbox
 pyyaml
 ruamel.yaml
+requests

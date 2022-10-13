@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import pynetbox
 import requests
 import urllib3
@@ -47,19 +48,26 @@ nb = get_netbox()
 
 HEADERS = {"Content-Type": "application/json;", "Authorization": f"Token {nb.token}"}
 
+
 def provision_config_context():
-    '''
+    """
     Provision the config context based on the json file present in the config-contexts folder.
     Uses the json filename as config context name. Applies it to the roles leaf and spine.
     Limitation: Do not update the Config context if the content of the json file change.
-    '''
+    """
 
-    for file in glob.glob('config-contexts/*.json'):
+    for file in glob.glob("config-contexts/*.json"):
         with open(file) as json_data:
             ccdata = json.load(json_data)
 
-            ccname= os.path.basename(file).split(".")[0]
-            get_or_create(nb.extras.config_contexts, search='name', name=ccname, data= ccdata, roles=[role_leaf.id,role_spine.id])
+            ccname = os.path.basename(file).split(".")[0]
+            get_or_create(
+                nb.extras.config_contexts,
+                search="name",
+                name=ccname,
+                data=ccdata,
+                roles=[role_leaf.id, role_spine.id],
+            )
 
 
 def create_devices(evpnlab):
@@ -68,7 +76,6 @@ def create_devices(evpnlab):
         x["display_name"].lower(): i
         for i, x in enumerate(nb.dcim.devices.choices()["status"])
     }
-
 
     # Create Device with minimum: role, device type , site
     for node, kind in evpnlab["topology"]["nodes"].items():
@@ -142,7 +149,6 @@ def create_devices(evpnlab):
     #                     newdev.save()
 
 
-
 with open("../evpnlab-tiny.yml") as fh:
     evpnlab = yaml.load(fh, Loader=yaml.FullLoader)
 
@@ -198,28 +204,25 @@ def get_or_create(concept, search="slug", **kwargs):
     return nb_object
 
 
-
 def provision_orga():
 
-
-    global tenant_rainbow 
+    global tenant_rainbow
     tenant_rainbow = get_or_create(nb.tenancy.tenants, name="Rainbow", slug="rainbow")
 
-    global site_palette 
+    global site_palette
     site_palette = get_or_create(nb.dcim.sites, name="Palette", slug="palette")
     site_palette.tenant = tenant_rainbow
     site_palette.save()
 
-
-    global role_spine 
+    global role_spine
     role_spine = get_or_create(nb.dcim.device_roles, name="spine", slug="spine")
-    global role_leaf 
+    global role_leaf
     role_leaf = get_or_create(nb.dcim.device_roles, name="leaf", slug="leaf")
-    global role_server 
+    global role_server
     role_server = get_or_create(nb.dcim.device_roles, name="server", slug="server")
-    global manuf_arista 
+    global manuf_arista
     manuf_arista = get_or_create(nb.dcim.manufacturers, name="Arista", slug="arista")
-    global manuf_linux 
+    global manuf_linux
     manuf_linux = get_or_create(nb.dcim.manufacturers, name="Linux", slug="linux")
 
 
@@ -228,22 +231,20 @@ def provision_devices():
     process_yaml("devicetype-ceos-lab.yml")
     process_yaml("devicetype-alpine.yml")
 
-    global devicetype_ceos 
+    global devicetype_ceos
     devicetype_ceos = get_or_create(
         nb.dcim.device_types,
         model="cEOS-LAB",
         manufacturer=manuf_arista.id,
         slug="ceos-lab",
     )
-    global devicetype_alpine 
+    global devicetype_alpine
     devicetype_alpine = get_or_create(
         nb.dcim.device_types, model="Alpine", manufacturer=manuf_linux.id, slug="alpine"
     )
 
-
     # TODO import device library -> Manual creation for the moment
     # https://gist.github.com/AdamEldred/f83105446c6ceb1b13dccad661ade428
-
 
     create_devices(evpnlab)
     global spines
@@ -293,15 +294,13 @@ def provision_customfields():
         label="EVPN L3VPN",
     )
 
-def provision_asns():
 
+def provision_asns():
 
     #### ASN Creation and assignment ###
 
-
     leafrange = [*range(65100, 65199)]
     spinerange = [*range(65001, 65099)]
-
 
     for device in leafs:
         if (asn := device.custom_fields.get("evpn_asn")) is not None:
@@ -324,9 +323,14 @@ def provision_asns():
 
     #### END OF ASN Creation and assignment ###
 
+
 def provision_interfaces():
-    evpn_loopback = get_or_create(nb.ipam.roles, name="evpn-loopback", slug="evpn-loopback")
-    evpn_underlay = get_or_create(nb.ipam.roles, name="evpn-underlay", slug="evpn-underlay")
+    evpn_loopback = get_or_create(
+        nb.ipam.roles, name="evpn-loopback", slug="evpn-loopback"
+    )
+    evpn_underlay = get_or_create(
+        nb.ipam.roles, name="evpn-underlay", slug="evpn-underlay"
+    )
     global evpn_vtep
     evpn_vtep = get_or_create(nb.ipam.roles, name="evpn-vtep", slug="evpn-vtep")
     global role_data
@@ -360,14 +364,14 @@ def provision_interfaces():
         tenant=tenant_rainbow.id,
     )
 
-
     def get_interface_data(raw_device_name, raw_intf_name):
         device = nb.dcim.devices.get(name=raw_device_name)
         if str(device.device_type) == "cEOS-LAB":
             # replace between containerlab naming and Netbox naming
             raw_intf_name = raw_intf_name.replace("eth", "Ethernet")
-        return device, nb.dcim.interfaces.get(device=raw_device_name, name=raw_intf_name)
-
+        return device, nb.dcim.interfaces.get(
+            device=raw_device_name, name=raw_intf_name
+        )
 
     for link in evpnlab["topology"]["links"]:
         left, right = link["endpoints"]
@@ -396,7 +400,10 @@ def provision_interfaces():
             )
         )
         link_spine_leaf = all(
-            [str(x.device_role) in ["spine", "leaf"] for x in [left_device, right_device]]
+            [
+                str(x.device_role) in ["spine", "leaf"]
+                for x in [left_device, right_device]
+            ]
         )
         not_ips_assigned = (
             nb.ipam.ip_addresses.get(interface_id=left_intf.id) is None
@@ -421,7 +428,6 @@ def provision_interfaces():
             right_ip.assigned_object_id = right_intf.id
             right_ip.assigned_object_type = "dcim.interface"
             right_ip.save()
-
 
     for device in leafs + spines:
 
@@ -458,8 +464,6 @@ def provision_interfaces():
 
 def provision_networks():
 
-
-
     # Create VLAN Group
     dc1 = get_or_create(
         nb.ipam.vlan_groups,
@@ -468,7 +472,6 @@ def provision_networks():
         scope_type="dcim.site",
         scope_id=site_palette.id,
     )
-
 
     # Create Tags
     even_network = get_or_create(
@@ -484,7 +487,6 @@ def provision_networks():
         nb.extras.tags, name="evpn:twohundred", slug="evpn-twohundred"
     )
 
-
     # Create VLAN (add vni) / Assign tags to vlan
     vl110 = get_or_create(
         nb.ipam.vlans,
@@ -497,7 +499,6 @@ def provision_networks():
         tags=[even_network.id, onehundred.id],
         custom_fields={"evpn_vni": 1010},
     )
-
 
     vl111 = get_or_create(
         nb.ipam.vlans,
@@ -554,7 +555,6 @@ def provision_networks():
         custom_fields={"evpn_vni": 20},
     )
 
-
     # Create Prefix
     prefix1 = get_or_create(
         nb.ipam.prefixes,
@@ -600,7 +600,6 @@ def provision_networks():
         tenant=tenant_rainbow.id,
     )
 
-
     for leaf in leafs:
         vxlan1 = nb.dcim.interfaces.get(device=leaf, name="Vxlan1")
         cf_evpn_assignment_append(vxlan1, "evpn_l2vpn", vl110)
@@ -608,8 +607,16 @@ def provision_networks():
         cf_evpn_assignment_append(vxlan1, "evpn_l3vpn", vrfa)
         cf_evpn_assignment_append(vxlan1, "evpn_l3vpn", vrfb)
 
+    vlaninfts = {
+        "leaf1": {"Vl110": "10.1.10.1", "Vl111": "10.1.11.1", "Vl210": "10.2.10.1"},
+        "leaf2": {"Vl110": "10.1.10.1", "Vl210": "10.2.10.1", "Vl211": "10.2.11.1"},
+    }
 
-        
+
+def provision_vlanintf():
+    pass
+
+
 def provision_all():
 
     provision_customfields()
@@ -617,7 +624,6 @@ def provision_all():
     provision_orga()
 
     provision_config_context()
-
 
     provision_devices()
 
@@ -627,7 +633,7 @@ def provision_all():
 
     provision_networks()
 
-
+    provision_vlanintf()
 
 
 def cf_evpn_assignment_append(interface, cf_evpname, ressource):
@@ -651,23 +657,23 @@ def cf_evpn_assignment_append(interface, cf_evpname, ressource):
     ans.json()
 
 
-
 def get_shell():
     import ipdb
+
     ipdb.set_trace()
 
 
 ### Device type YAML import https://gist.github.com/rlaneyjr/87917f4e9a66d129c392b2353469b34b
 
 TEMPLATE_LIST = [
-    'console-ports',
-    'console-server-ports',
-    'power-ports',
-    'power-outlets',
-    'interfaces',
-    'front-ports',
-    'rear-ports',
-    'device-bays',
+    "console-ports",
+    "console-server-ports",
+    "power-ports",
+    "power-outlets",
+    "interfaces",
+    "front-ports",
+    "rear-ports",
+    "device-bays",
 ]
 
 
@@ -712,6 +718,7 @@ class TemplateProcessError(BaseException):
     Custom exception class
     """
 
+
 def slugify(s):
     """
     Converts dirty strings into something URL-friendly.
@@ -719,19 +726,20 @@ def slugify(s):
     """
     s = s.lower()
     # Replace these items with underscore first
-    for c in [' ', '-', '.', '/']:
-        s = s.replace(c, '_')
+    for c in [" ", "-", ".", "/"]:
+        s = s.replace(c, "_")
     # Remove non-word characters
-    s = re.sub(r'\W', '', s)
+    s = re.sub(r"\W", "", s)
     # Replace underscore with space to eliminate space seperated underscores
-    s = s.replace('_', ' ')
+    s = s.replace("_", " ")
     # Replace 2 or more spaces with single space
-    s = re.sub(r'\s+', ' ', s)
+    s = re.sub(r"\s+", " ", s)
     # Remove any leading or trailing spaces
     s = s.strip()
     # Finally replace spaces with a dash
-    s = s.replace(' ', '-')
+    s = s.replace(" ", "-")
     return s
+
 
 def get_yamls(yaml_file_path):
     """
@@ -739,7 +747,7 @@ def get_yamls(yaml_file_path):
     """
     yamls = []
     yp = Path(yaml_file_path)
-    for yf in yp.rglob('*.yaml'):
+    for yf in yp.rglob("*.yaml"):
         yamls.append(yf)
     return yamls
 
@@ -763,14 +771,14 @@ def device_type_exists(device_type):
     """
     try:
         print(f"Checking if {device_type['model']} exists")
-        _slug = slugify(device_type['model'])
-        if nb.dcim.device_types.filter(model=device_type['model']):
+        _slug = slugify(device_type["model"])
+        if nb.dcim.device_types.filter(model=device_type["model"]):
             print(f"Found device_type dict {device_type['model']}")
             return True
-        elif nb.dcim.device_types.get(model=device_type['model']):
+        elif nb.dcim.device_types.get(model=device_type["model"]):
             print(f"Found device_type name {device_type['model']}")
             return True
-        elif nb.dcim.device_types.get(slug=device_type['slug']):
+        elif nb.dcim.device_types.get(slug=device_type["slug"]):
             print(f"Found device_type slug {device_type['slug']}")
             return True
         elif nb.dcim.device_types.get(slug=_slug):
@@ -789,7 +797,7 @@ def get_or_create_manufacturer(man):
     print(f"Checking if {man} exists")
     if not nb.dcim.manufacturers.get(name=man):
         print(f"Manufacturer: {man} does not exist")
-        new_man = {'name': man, 'slug': slugify(man)}
+        new_man = {"name": man, "slug": slugify(man)}
         print(f"Creating manufacturer with: {new_man}")
         nb.dcim.manufacturers.create(new_man)
     man_id = nb.dcim.manufacturers.get(name=man).id
@@ -802,21 +810,21 @@ def create_template(name, template):
     Create a template.
     """
     try:
-        if name == 'console-ports':
+        if name == "console-ports":
             results = nb.dcim.console_port_templates.create(template)
-        elif name == 'console-server-ports':
+        elif name == "console-server-ports":
             results = nb.dcim.console_server_port_templates.create(template)
-        elif name == 'power-ports':
+        elif name == "power-ports":
             results = nb.dcim.power_port_templates.create(template)
-        elif name == 'power-outlets':
+        elif name == "power-outlets":
             results = nb.dcim.power_outlet_templates.create(template)
-        elif name == 'interfaces':
+        elif name == "interfaces":
             results = nb.dcim.interface_templates.create(template)
-        elif name == 'front-ports':
+        elif name == "front-ports":
             results = nb.dcim.front_port_templates.create(template)
-        elif name == 'rear-ports':
+        elif name == "rear-ports":
             results = nb.dcim.rear_port_templates.create(template)
-        elif name == 'device-bays':
+        elif name == "device-bays":
             results = nb.dcim.device_bay_templates.create(template)
         print(f"Created new {name}: {results.name}")
         return results
@@ -824,7 +832,8 @@ def create_template(name, template):
         print(f"Already have {name}: {template}")
     except Exception as e:
         raise TemplateCreationError(
-                f"Failed creating: {name}: {template}\nException: {e}")
+            f"Failed creating: {name}: {template}\nException: {e}"
+        )
 
 
 def process_templates(device_type):
@@ -832,15 +841,16 @@ def process_templates(device_type):
     Process the templates.
     """
     try:
-        device_type_id = nb.dcim.device_types.get(model=device_type['model']).id
+        device_type_id = nb.dcim.device_types.get(model=device_type["model"]).id
     except:
         raise TemplateProcessError(
             f"Create device_type: {device_type['model']} before extracting \
-            templates.")
+            templates."
+        )
     for name, data in device_type.items():
         if name in TEMPLATE_LIST:
             for item in data:
-                item.update({'device_type': device_type_id})
+                item.update({"device_type": device_type_id})
                 print(f"Creating template {name} with {item}")
                 create_template(name, item)
 
@@ -850,11 +860,13 @@ def validate_device_data(device_type):
     Validates and modifies data before inserting in NetBox.
     """
     if not isinstance(device_type, dict):
-        raise DeviceTypeValidationError(f"Validation FAILED for {device_type}: \
-                            {type(device_type)} is not a dict")
-    man = device_type['manufacturer']
+        raise DeviceTypeValidationError(
+            f"Validation FAILED for {device_type}: \
+                            {type(device_type)} is not a dict"
+        )
+    man = device_type["manufacturer"]
     man_id = get_or_create_manufacturer(man)
-    device_type['manufacturer'] = man_id
+    device_type["manufacturer"] = man_id
     return device_type
 
 
@@ -880,6 +892,7 @@ def process_yaml(yml_file):
     device_type = load_yaml(yml_file)
     process_device_type(device_type)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # Execute when the module is not initialized from an import statement.
     provision_all()
