@@ -12,6 +12,7 @@ from pynetbox.core.query import RequestError
 import json
 import glob
 import os.path
+import operator
 
 urllib3.disable_warnings()
 
@@ -261,7 +262,7 @@ def provision_customfields():
         name="evpn_asn",
         content_types=["dcim.device"],
         type="integer",
-        label="EVPN ASN",
+        label="EVPN ASN"
     )
 
     # Create Custom Fields VNI on VLAN / VRF
@@ -271,7 +272,7 @@ def provision_customfields():
         name="evpn_vni",
         content_types=["ipam.vlan", "ipam.vrf"],
         type="integer",
-        label="EVPN VNI",
+        label="EVPN VNI"
     )
 
     cf_l2evpn = get_or_create(
@@ -281,7 +282,7 @@ def provision_customfields():
         content_types=["dcim.interface"],
         type="multiobject",
         object_type="ipam.vlan",
-        label="EVPN L2VPN",
+        label="EVPN L2VPN"
     )
 
     cf_l3evpn = get_or_create(
@@ -291,11 +292,26 @@ def provision_customfields():
         content_types=["dcim.interface"],
         type="multiobject",
         object_type="ipam.vrf",
-        label="EVPN L3VPN",
+        label="EVPN L3VPN"
+    )
+
+    cf_udp_port = get_or_create(
+        nb.extras.custom_fields,
+        search="name",
+        name="vxlan_udp_port",
+        content_types=["dcim.interface"],
+        type="integer",
+        label="VXLAN UDP-PORT"
     )
 
 
 def provision_asns():
+
+    def assign_spine_asn(grp: list,spine_asn: int) -> None:
+        for device in grp:
+            if device.custom_fields.get("evpn_asn") is None:
+                device.custom_fields.update({"evpn_asn": spine_asn})
+                device.save()
 
     #### ASN Creation and assignment ###
 
@@ -304,11 +320,12 @@ def provision_asns():
 
     for device in leafs:
         if (asn := device.custom_fields.get("evpn_asn")) is not None:
-            print(asn)
+            # print(f"leaf {asn}")
             leafrange.remove(asn)
 
     for device in spines:
-        if (asn := device.custom_fields.get("evpn_asn")) is not None:
+        if (asn := device.custom_fields.get("evpn_asn")) is not None and asn not in spinerange:
+            # print(f"spine {asn}")
             spinerange.remove(asn)
 
     for device in leafs:
@@ -316,10 +333,22 @@ def provision_asns():
             device.custom_fields.update({"evpn_asn": leafrange.pop(0)})
             device.save()
 
+
+    # for device in spines:
+    #     if device.custom_fields.get("evpn_asn") is None:
+    #         device.custom_fields.update({"evpn_asn": spinerange.pop(0)})
+    #         device.save()
+    ##### merge spine per site for apply the same asn ####
+    spine_grp=list()
     for device in spines:
-        if device.custom_fields.get("evpn_asn") is None:
-            device.custom_fields.update({"evpn_asn": spinerange.pop(0)})
-            device.save()
+        site=str(device.site)
+        spine_grp.append(list(filter(lambda x: str(x.site) == site,spines)))
+    import itertools
+    spine_grp=[spine_grp for spine_grp,_ in itertools.groupby(spine_grp)]
+
+    for grp in spine_grp:
+        spine_asn=spinerange.pop(0)
+        assign_spine_asn(grp,spine_asn)
 
     #### END OF ASN Creation and assignment ###
 
@@ -364,7 +393,9 @@ def provision_interfaces():
         tenant=tenant_rainbow.id,
     )
 
+
     def get_interface_data(raw_device_name, raw_intf_name):
+
         device = nb.dcim.devices.get(name=raw_device_name)
         if str(device.device_type) == "cEOS-LAB":
             # replace between containerlab naming and Netbox naming
@@ -385,20 +416,27 @@ def provision_interfaces():
             tmp
             if (
                 tmp := nb.dcim.cables.get(
-                    termination_a_type="dcim.interface",
                     termination_a_id=left_intf.id,
-                    termination_b_type="dcim.interface",
                     termination_b_id=right_intf.id,
                 )
             )
             is not None
             else nb.dcim.cables.create(
-                termination_a_type="dcim.interface",
-                termination_a_id=left_intf.id,
-                termination_b_type="dcim.interface",
-                termination_b_id=right_intf.id,
+                dict(a_terminations=[
+                    {
+                        'object_type': 'dcim.interface',
+                        'object_id': left_intf.id
+                    }
+                ], b_terminations=[
+                    {
+                        'object_type': 'dcim.interface',
+                        'object_id': right_intf.id
+                    }
+                ])
             )
         )
+
+
         link_spine_leaf = all(
             [
                 str(x.device_role) in ["spine", "leaf"]
@@ -428,6 +466,13 @@ def provision_interfaces():
             right_ip.assigned_object_id = right_intf.id
             right_ip.assigned_object_type = "dcim.interface"
             right_ip.save()
+        ''' set mtu value for segment between spine and leaf '''
+        if str(left_device.device_role) in ["spine", "leaf"] and left_intf.mtu is None:
+            if str(right_device.device_role)!= "server":
+                left_intf.update(dict(mtu='9000'))
+        if str(right_device.device_role) in ["spine", "leaf"] and right_intf.mtu is None:
+            if str(left_device.device_role)!= "server":
+                right_intf.update(dict(mtu='9000'))
 
     for device in leafs + spines:
 
@@ -460,6 +505,15 @@ def provision_interfaces():
                 lo = get_or_create(nb.dcim.interfaces, search="intf", **intf_data)
                 if intf_name == "Loopback1":
                     assign_ip(lo)
+                if str(intf_name).lower() == "vxlan1":
+                    is_loopback1= list(operator.attrgetter('dcim.interfaces')(nb).filter(**{'device':str(device),
+                                                                                                   'name':'Loopback1'})
+                                              )[0]
+                    if is_loopback1 is not None:
+                        is_vxlan=list(operator.attrgetter('dcim.interfaces')(nb).filter(**{'device':str(device),
+                                                                                           'name':str(intf_name)}))[0]
+                        is_vxlan.update({'parent':is_loopback1})
+                        is_vxlan.update({'custom_fields':{'vxlan_udp_port':4789}})
 
 
 def provision_networks():
@@ -616,6 +670,78 @@ def provision_networks():
 def provision_vlanintf():
     pass
 
+def provision_bgp() -> None:
+
+    def get_bgp_neighbor(inventory: list):
+        '''
+
+        '''
+        bgp_tables=list()
+        local_ctx = {}
+        attr_nb="ipam.ip-addresses"
+        for device in inventory:
+            local_ctx[device['host']] = dict(bgp=[{'ipv4-underlay-peers': []},{'evpn-overlay-peers': []}])
+        for device in inventory:
+            for intf in device['interfaces']:
+                if intf.cable is None:
+                    continue
+                intf_neighbor=str(intf.connected_endpoints[0])
+                rem_device=str(intf.connected_endpoints[0].device)
+                asn_neighbor=intf.connected_endpoints[0].device.custom_fields.get("evpn_asn")
+                peer_neighbor=(list(operator.attrgetter(attr_nb)(nb).filter(**{"device":rem_device,
+                                                                               "interface":intf_neighbor
+                                                                               })))
+                if 0 != len(peer_neighbor):
+                    bgp_tables.append(dict(
+                        device=device['host'],params=[{'p2p_int_local': str(intf), 'p2p_remote_int': intf_neighbor,
+                                                       'p2p_remote_peer': str(peer_neighbor[0]).split('/')[0],
+                                                       'p2p_remote_device': rem_device, 'p2p_remote_asn': asn_neighbor}]
+                    )
+                    )
+                    param=dict(neighbor=str(peer_neighbor[0]).split('/')[0],remote_as=asn_neighbor)
+                    local_ctx[device['host']]['bgp'][0]['ipv4-underlay-peers'].append(param)
+        for device in inventory:
+            for intf in device['interfaces']:
+                if intf.cable is None :
+                    continue
+                rem_device=str(intf.connected_endpoints[0].device)
+                asn_neighbor = intf.connected_endpoints[0].device.custom_fields.get("evpn_asn")
+                peer_neighbor=list(operator.attrgetter(attr_nb)(nb).filter(**{"device":rem_device,
+                                                                              "interface":"Loopback0"}
+                                                                           ))
+                if 'server' != str(intf.connected_endpoints[0].device.device_role):
+                    bgp_tables.append(dict(
+                        device=device['host'], params=[{'p2p_int_local': "Loopback0", 'p2p_remote_int': "Loopback0",
+                                                        'p2p_remote_peer': str(peer_neighbor[0]).split('/')[0],
+                                                        'p2p_remote_device': rem_device,'p2p_remote_asn': asn_neighbor}]
+                    )
+                    )
+                    param = dict(neighbor=str(peer_neighbor[0]).split('/')[0], remote_as=asn_neighbor)
+                    local_ctx[device['host']]['bgp'][1]['evpn-overlay-peers'].append(param)
+
+        return bgp_tables,local_ctx
+
+    spines_lst=list(operator.attrgetter("dcim.devices")(nb).filter(**{'role':"spine"}))
+    leafs_lst=list(operator.attrgetter("dcim.devices")(nb).filter(**{'role':"leaf"}))
+    inventory,attr_nb,obj_nb=list(),"dcim.interfaces","device"
+    for device in spines_lst+leafs_lst:
+            inventory.append(dict(host=str(device),
+                                  interfaces=list(operator.attrgetter(attr_nb)(nb).filter(**{obj_nb:str(device)}))))
+
+    bgp_params=get_bgp_neighbor(inventory)
+    for param in bgp_params[0]:
+        print (param)
+
+    for device in spines_lst+leafs_lst:
+        bgp_param=bgp_params[1][str(device)]
+        # if None == device.config_context['local-routing'].get('bgp'):
+        config_ctx=device.config_context['local-routing']
+        config_ctx.update(bgp_param)
+        local_ctx={'local-routing':config_ctx}
+        device.update({'local_context_data':local_ctx})
+
+
+
 
 def provision_all():
 
@@ -633,7 +759,11 @@ def provision_all():
 
     provision_networks()
 
+    provision_bgp()
+
     provision_vlanintf()
+
+
 
 
 def cf_evpn_assignment_append(interface, cf_evpname, ressource):

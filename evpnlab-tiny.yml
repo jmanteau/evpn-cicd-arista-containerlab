@@ -8,7 +8,8 @@ mgmt:
 topology:
   kinds:
     ceos:
-      image: ceosimage:4.26.4M
+      #image: ceosimage:4.26.4M
+      image: ceosimage:4.27.6M
       startup-config: templates/ceos.cfg
     linux:
       image: evpnlab-host:latest

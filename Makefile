@@ -238,20 +238,20 @@ ansible-check: guard-LAB
 	cd ansible-$(LAB) && ansible-playbook -i ../clab-evpnlab/ansible-inventory.yml -i group-inventory.yml playbook-facts.yaml
 
 ## Create the folder structure needed for AVD
-ansible-folder: guard-LAB
-	cd ansible-$(LAB) && ansible-playbook -i group-inventory.yml -i ../clab-evpnlab/ansible-inventory.yml  playbook-build_folderstructure.yaml
+ansible-folder: 
+	cd ansible-tinylab && ansible-playbook -i group-inventory.yml -i ../clab-evpnlab/ansible-inventory.yml  playbook-build_folderstructure.yaml
 
 ## Create the intented config for the lab
 ansible-config: guard-LAB
-	cd ansible-$(LAB) && ansible-playbook -i group-inventory.yml -i ../clab-evpnlab/ansible-inventory.yml  playbook-intendedconfig.yaml -vvv
+	cd ansible-tinylab && ansible-playbook -i group-inventory.yml -i ../clab-evpnlab/ansible-inventory.yml  playbook-intendedconfig.yaml -vvv
 
 ## Generate, deploy and validate the config for the lab
 ansible-deploy: guard-LAB
-	cd ansible-$(LAB) && ansible-playbook -i group-inventory.yml -i ../clab-evpnlab/ansible-inventory.yml  playbook-deploy.yaml
+	cd ansible-tinylab && ansible-playbook -i group-inventory.yml -i ../clab-evpnlab/ansible-inventory.yml  playbook-deploy.yaml
 
 ## Configure the host networking
 ansible-nethost: guard-LAB
-	cd ansible-$(LAB) && ansible-playbook -i group-inventory.yml -i ../clab-evpnlab/ansible-inventory.yml  playbook-networkhost.yaml
+	cd ansible-tinylab && ansible-playbook -i group-inventory.yml -i ../clab-evpnlab/ansible-inventory.yml  playbook-networkhost.yaml
 
 
 ## -- Tooling --
