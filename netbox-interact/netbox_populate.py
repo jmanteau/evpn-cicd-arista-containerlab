@@ -256,12 +256,21 @@ def provision_devices():
 
 def provision_customfields():
 
+    # cf_asn = get_or_create(
+    #     nb.extras.custom_fields,
+    #     search="name",
+    #     name="evpn_asn",
+    #     content_types=["dcim.device"],
+    #     type="integer",
+    #     label="EVPN ASN"
+    # )
     cf_asn = get_or_create(
         nb.extras.custom_fields,
         search="name",
         name="evpn_asn",
         content_types=["dcim.device"],
-        type="integer",
+        type="object",
+        object_type="ipam.asn",
         label="EVPN ASN"
     )
 
@@ -740,6 +749,11 @@ def provision_bgp() -> None:
         local_ctx={'local-routing':config_ctx}
         device.update({'local_context_data':local_ctx})
 
+def provision_rir_aggregates():
+    operator.attrgetter("ipam.rirs")(nb).create({'name': 'private-subnets',
+                                                 'slug': slugify.slugify(text='private-subnets'),
+                                                 'is_private': True}
+                                                 )
 
 
 
@@ -756,6 +770,8 @@ def provision_all():
     provision_asns()
 
     provision_interfaces()
+
+    provision_rir_aggregates()
 
     provision_networks()
 
