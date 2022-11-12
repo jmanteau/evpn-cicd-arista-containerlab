@@ -706,7 +706,7 @@ def provision_bgp() -> None:
                     continue
                 intf_neighbor=str(intf.connected_endpoints[0])
                 rem_device=str(intf.connected_endpoints[0].device)
-                asn_neighbor=intf.connected_endpoints[0].device.custom_fields.get("evpn_asn")
+                asn_neighbor=intf.connected_endpoints[0].device.custom_fields.get("evpn_asn")['asn']
                 peer_neighbor=(list(operator.attrgetter(attr_nb)(nb).filter(**{"device":rem_device,
                                                                                "interface":intf_neighbor
                                                                                })))
@@ -724,7 +724,7 @@ def provision_bgp() -> None:
                 if intf.cable is None :
                     continue
                 rem_device=str(intf.connected_endpoints[0].device)
-                asn_neighbor = intf.connected_endpoints[0].device.custom_fields.get("evpn_asn")
+                asn_neighbor = intf.connected_endpoints[0].device.custom_fields.get("evpn_asn")['asn']
                 peer_neighbor=list(operator.attrgetter(attr_nb)(nb).filter(**{"device":rem_device,
                                                                               "interface":"Loopback0"}
                                                                            ))
