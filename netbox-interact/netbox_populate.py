@@ -316,32 +316,41 @@ def provision_customfields():
 
 def provision_asns():
 
-    def assign_spine_asn(grp: list,spine_asn: int) -> None:
+    def assign_spine_asn(grp: list,spine_asn: object) -> None:
         for device in grp:
             if device.custom_fields.get("evpn_asn") is None:
-                device.custom_fields.update({"evpn_asn": spine_asn})
+                device.custom_fields.update(dict(evpn_asn=spine_asn.id))
                 device.save()
 
     #### ASN Creation and assignment ###
 
     leafrange = [*range(65100, 65199)]
     spinerange = [*range(65001, 65099)]
-
+    rir = operator.attrgetter("ipam.rirs")(nb).get(**{'name': 'private-subnets'})
     for device in leafs:
-        if (asn := device.custom_fields.get("evpn_asn")) is not None:
-            # print(f"leaf {asn}")
+        # if (asn := device.custom_fields.get("evpn_asn")) is not None:
+        #     # print(f"leaf {asn}")
+        #     leafrange.remove(asn)
+        if device.custom_fields.get("evpn_asn") is not None:
+            asn=device.custom_fields.get("evpn_asn")['asn']
             leafrange.remove(asn)
 
     for device in spines:
-        if (asn := device.custom_fields.get("evpn_asn")) is not None and asn not in spinerange:
-            # print(f"spine {asn}")
-            spinerange.remove(asn)
+        # if (asn := device.custom_fields.get("evpn_asn")) is not None and asn not in spinerange:
+        #     # print(f"spine {asn}")
+        #     spinerange.remove(asn)
+        if device.custom_fields.get("evpn_asn") is not None:
+            asn=device.custom_fields.get("evpn_asn")['asn']
+            if asn not in spinerange:
+                spinerange.remove(asn)
 
     for device in leafs:
         if device.custom_fields.get("evpn_asn") is None:
-            device.custom_fields.update({"evpn_asn": leafrange.pop(0)})
+            xasn=leafrange.pop(0)
+            operator.attrgetter('ipam.asns')(nb).create(dict(asn=xasn,rir=rir.id))
+            asn=operator.attrgetter("ipam.asns")(nb).get(**dict(asn=xasn))
+            device.custom_fields.update(dict(evpn_asn=asn.id))
             device.save()
-
 
     # for device in spines:
     #     if device.custom_fields.get("evpn_asn") is None:
@@ -357,10 +366,11 @@ def provision_asns():
 
     for grp in spine_grp:
         spine_asn=spinerange.pop(0)
-        assign_spine_asn(grp,spine_asn)
+        operator.attrgetter('ipam.asns')(nb).create(dict(asn=spine_asn,rir=rir.id))
+        asn = operator.attrgetter("ipam.asns")(nb).get(**dict(asn=spine_asn))
+        assign_spine_asn(grp,asn)
 
     #### END OF ASN Creation and assignment ###
-
 
 def provision_interfaces():
     evpn_loopback = get_or_create(
@@ -750,11 +760,13 @@ def provision_bgp() -> None:
         device.update({'local_context_data':local_ctx})
 
 def provision_rir_aggregates():
-    operator.attrgetter("ipam.rirs")(nb).create({'name': 'private-subnets',
-                                                 'slug': slugify.slugify(text='private-subnets'),
-                                                 'is_private': True}
-                                                 )
-
+    import slugify
+    slug=slugify.slugify(text='private-subnets')
+    if operator.attrgetter('ipam.rirs')(nb).get(name='private-subnets') is None:
+        operator.attrgetter("ipam.rirs")(nb).create({'name': 'private-subnets',
+                                                     'slug': slug,
+                                                     'is_private': True}
+                                                     )
 
 
 def provision_all():
@@ -767,11 +779,11 @@ def provision_all():
 
     provision_devices()
 
+    provision_rir_aggregates()
+
     provision_asns()
 
     provision_interfaces()
-
-    provision_rir_aggregates()
 
     provision_networks()
 
