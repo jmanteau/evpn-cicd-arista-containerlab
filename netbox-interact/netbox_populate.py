@@ -98,9 +98,10 @@ def create_devices(evpnlab):
             device_type=dev_type.id,
             device_role=dev_role.id,
         )
-        newdev.status = "active"
-        newdev.tenant = tenant_rainbow
-        newdev.save()
+        if newdev.status is None:
+            newdev.status = "active"
+            newdev.tenant = tenant_rainbow
+            newdev.save()
 
     # # Create interface. Add IPs
 
@@ -341,7 +342,7 @@ def provision_asns():
         #     spinerange.remove(asn)
         if device.custom_fields.get("evpn_asn") is not None:
             asn=device.custom_fields.get("evpn_asn")['asn']
-            if asn not in spinerange:
+            if asn in spinerange:
                 spinerange.remove(asn)
 
     for device in leafs:
@@ -359,16 +360,17 @@ def provision_asns():
     ##### merge spine per site for apply the same asn ####
     spine_grp=list()
     for device in spines:
-        site=str(device.site)
-        spine_grp.append(list(filter(lambda x: str(x.site) == site,spines)))
+        if device.custom_fields['evpn_asn'] is None:
+            site=str(device.site)
+            spine_grp.append(list(filter(lambda x: str(x.site) == site,spines)))
     import itertools
     spine_grp=[spine_grp for spine_grp,_ in itertools.groupby(spine_grp)]
-
-    for grp in spine_grp:
-        spine_asn=spinerange.pop(0)
-        operator.attrgetter('ipam.asns')(nb).create(dict(asn=spine_asn,rir=rir.id))
-        asn = operator.attrgetter("ipam.asns")(nb).get(**dict(asn=spine_asn))
-        assign_spine_asn(grp,asn)
+    if spine_grp:
+        for grp in spine_grp:
+            spine_asn=spinerange.pop(0)
+            operator.attrgetter('ipam.asns')(nb).create(dict(asn=spine_asn,rir=rir.id))
+            asn = operator.attrgetter("ipam.asns")(nb).get(**dict(asn=spine_asn))
+            assign_spine_asn(grp,asn)
 
     #### END OF ASN Creation and assignment ###
 
@@ -704,39 +706,45 @@ def provision_bgp() -> None:
             for intf in device['interfaces']:
                 if intf.cable is None:
                     continue
-                intf_neighbor=str(intf.connected_endpoints[0])
-                rem_device=str(intf.connected_endpoints[0].device)
-                asn_neighbor=intf.connected_endpoints[0].device.custom_fields.get("evpn_asn")['asn']
-                peer_neighbor=(list(operator.attrgetter(attr_nb)(nb).filter(**{"device":rem_device,
-                                                                               "interface":intf_neighbor
-                                                                               })))
-                if 0 != len(peer_neighbor):
-                    bgp_tables.append(dict(
-                        device=device['host'],params=[{'p2p_int_local': str(intf), 'p2p_remote_int': intf_neighbor,
-                                                       'p2p_remote_peer': str(peer_neighbor[0]).split('/')[0],
-                                                       'p2p_remote_device': rem_device, 'p2p_remote_asn': asn_neighbor}]
-                    )
-                    )
-                    param=dict(neighbor=str(peer_neighbor[0]).split('/')[0],remote_as=asn_neighbor)
-                    local_ctx[device['host']]['bgp'][0]['ipv4-underlay-peers'].append(param)
+                rem_rolde_device=str(intf.connected_endpoints[0].device.device_role).lower()
+                if rem_rolde_device != 'server':
+                    intf_neighbor=str(intf.connected_endpoints[0])
+                    rem_device=str(intf.connected_endpoints[0].device)
+                    asn_neighbor=intf.connected_endpoints[0].device.custom_fields.get("evpn_asn")['asn']
+                    peer_neighbor=(list(operator.attrgetter(attr_nb)(nb).filter(**{"device":rem_device,
+                                                                                   "interface":intf_neighbor
+                                                                                   })))
+                    if 0 != len(peer_neighbor):
+                        bgp_tables.append(dict(
+                            device=device['host'],params=[{'p2p_int_local': str(intf), 'p2p_remote_int': intf_neighbor,
+                                                           'p2p_remote_peer': str(peer_neighbor[0]).split('/')[0],
+                                                           'p2p_remote_device': rem_device,
+                                                           'p2p_remote_asn': asn_neighbor}]
+                        )
+                        )
+                        param=dict(neighbor=str(peer_neighbor[0]).split('/')[0],remote_as=asn_neighbor)
+                        local_ctx[device['host']]['bgp'][0]['ipv4-underlay-peers'].append(param)
         for device in inventory:
             for intf in device['interfaces']:
                 if intf.cable is None :
                     continue
-                rem_device=str(intf.connected_endpoints[0].device)
-                asn_neighbor = intf.connected_endpoints[0].device.custom_fields.get("evpn_asn")['asn']
-                peer_neighbor=list(operator.attrgetter(attr_nb)(nb).filter(**{"device":rem_device,
-                                                                              "interface":"Loopback0"}
-                                                                           ))
-                if 'server' != str(intf.connected_endpoints[0].device.device_role):
-                    bgp_tables.append(dict(
-                        device=device['host'], params=[{'p2p_int_local': "Loopback0", 'p2p_remote_int': "Loopback0",
-                                                        'p2p_remote_peer': str(peer_neighbor[0]).split('/')[0],
-                                                        'p2p_remote_device': rem_device,'p2p_remote_asn': asn_neighbor}]
-                    )
-                    )
-                    param = dict(neighbor=str(peer_neighbor[0]).split('/')[0], remote_as=asn_neighbor)
-                    local_ctx[device['host']]['bgp'][1]['evpn-overlay-peers'].append(param)
+                rem_rolde_device=str(intf.connected_endpoints[0].device.device_role).lower()
+                if rem_rolde_device != 'server':
+                    rem_device=str(intf.connected_endpoints[0].device)
+                    asn_neighbor = intf.connected_endpoints[0].device.custom_fields.get("evpn_asn")['asn']
+                    peer_neighbor=list(operator.attrgetter(attr_nb)(nb).filter(**{"device":rem_device,
+                                                                                  "interface":"Loopback0"}
+                                                                               ))
+                    if 'server' != str(intf.connected_endpoints[0].device.device_role):
+                        bgp_tables.append(dict(
+                            device=device['host'], params=[{'p2p_int_local': "Loopback0", 'p2p_remote_int': "Loopback0",
+                                                            'p2p_remote_peer': str(peer_neighbor[0]).split('/')[0],
+                                                            'p2p_remote_device': rem_device,
+                                                            'p2p_remote_asn': asn_neighbor}]
+                        )
+                        )
+                        param = dict(neighbor=str(peer_neighbor[0]).split('/')[0], remote_as=asn_neighbor)
+                        local_ctx[device['host']]['bgp'][1]['evpn-overlay-peers'].append(param)
 
         return bgp_tables,local_ctx
 
@@ -757,7 +765,8 @@ def provision_bgp() -> None:
         config_ctx=device.config_context['local-routing']
         config_ctx.update(bgp_param)
         local_ctx={'local-routing':config_ctx}
-        device.update({'local_context_data':local_ctx})
+        if config_ctx != local_ctx['local-routing']:
+            device.update({'local_context_data':local_ctx})
 
 def provision_rir_aggregates():
     import slugify
