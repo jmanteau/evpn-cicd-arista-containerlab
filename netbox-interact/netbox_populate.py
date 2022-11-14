@@ -792,23 +792,23 @@ def provision_rir_aggregates():
 
 def provision_all():
 
-    # provision_customfields()
-    #
-    # provision_orga()
-    #
-    # provision_config_context()
-    #
-    # provision_devices()
-    #
-    # provision_rir_aggregates()
-    #
-    # provision_asns()
-    #
-    # provision_interfaces()
-    #
-    # provision_networks()
-    #
-    # provision_bgp()
+    provision_customfields()
+
+    provision_orga()
+
+    provision_config_context()
+
+    provision_devices()
+
+    provision_rir_aggregates()
+
+    provision_asns()
+
+    provision_interfaces()
+
+    provision_networks()
+
+    provision_bgp()
 
     provision_vlanintf()
 
