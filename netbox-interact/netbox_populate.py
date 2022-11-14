@@ -348,7 +348,7 @@ def provision_asns():
     for device in leafs:
         if device.custom_fields.get("evpn_asn") is None:
             xasn=leafrange.pop(0)
-            operator.attrgetter('ipam.asns')(nb).create(dict(asn=xasn,rir=rir.id))
+            operator.attrgetter('ipam.asns')(nb).create(dict(asn=xasn,rir=rir.id,description=str(device)))
             asn=operator.attrgetter("ipam.asns")(nb).get(**dict(asn=xasn))
             device.custom_fields.update(dict(evpn_asn=asn.id))
             device.save()
@@ -616,7 +616,7 @@ def provision_networks():
         nb.ipam.vrfs,
         search="rd",
         name="Zone-A",
-        rd="192.168.255.30:10",
+        rd="192.168.255.0:10",
         tenant=tenant_rainbow.id,
         custom_fields={"evpn_vni": 10},
     )
@@ -625,7 +625,7 @@ def provision_networks():
         nb.ipam.vrfs,
         search="name",
         name="Zone-B",
-        rd="192.168.255.30:20",
+        rd="192.168.255.0:20",
         tenant=tenant_rainbow.id,
         custom_fields={"evpn_vni": 20},
     )
@@ -689,7 +689,19 @@ def provision_networks():
 
 
 def provision_vlanintf():
-    pass
+    for node,params in evpnlab["topology"]["nodes"].items():
+        if not 'leaf' in node:
+            continue
+        device=operator.attrgetter('dcim.devices')(nb).get(**dict(name=node))
+        if device:
+            vlans = list()
+            intf = operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=str(device), name='VLAN_DATABASE'))
+            vlans.extend(list(operator.attrgetter('ipam.vlans')(nb).get(**dict(
+                vid=str(x['id']))).id for x in params['vlans']
+                              )
+                         )
+            intf.update({'tagged_vlans': vlans})
+
 
 def provision_bgp() -> None:
 
@@ -780,23 +792,23 @@ def provision_rir_aggregates():
 
 def provision_all():
 
-    provision_customfields()
-
-    provision_orga()
-
-    provision_config_context()
-
-    provision_devices()
-
-    provision_rir_aggregates()
-
-    provision_asns()
-
-    provision_interfaces()
-
-    provision_networks()
-
-    provision_bgp()
+    # provision_customfields()
+    #
+    # provision_orga()
+    #
+    # provision_config_context()
+    #
+    # provision_devices()
+    #
+    # provision_rir_aggregates()
+    #
+    # provision_asns()
+    #
+    # provision_interfaces()
+    #
+    # provision_networks()
+    #
+    # provision_bgp()
 
     provision_vlanintf()
 
