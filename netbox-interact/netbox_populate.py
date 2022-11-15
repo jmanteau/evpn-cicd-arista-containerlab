@@ -694,13 +694,17 @@ def provision_vlanintf():
             continue
         device=operator.attrgetter('dcim.devices')(nb).get(**dict(name=node))
         if device:
-            vlans = list()
-            intf = operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=str(device), name='VLAN_DATABASE'))
+            vlans,evpnl2vpn,evpnl3vpn = list(),list(),list()
+            intf_vlan = operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=str(device), name='VLAN_DATABASE'))
             vlans.extend(list(operator.attrgetter('ipam.vlans')(nb).get(**dict(
                 vid=str(x['id']))).id for x in params['vlans']
                               )
                          )
-            intf.update({'tagged_vlans': vlans})
+            intf_vlan.update({'tagged_vlans': vlans})
+            intf_vxlan1 = operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=str(device), name='Vxlan1'))
+            evpnl2vpn.extend(x['id'] for x in intf_vxlan1.custom_fields['evpn_l2vpn'])
+            evpnl3vpn.extend(x['id'] for x in intf_vxlan1.custom_fields['evpn_l2vpn'])
+            intf_vxlan1.update({'tagged_vlans':evpnl2vpn})
 
 
 def provision_bgp() -> None:
@@ -792,23 +796,23 @@ def provision_rir_aggregates():
 
 def provision_all():
 
-    provision_customfields()
-
-    provision_orga()
-
-    provision_config_context()
-
-    provision_devices()
-
-    provision_rir_aggregates()
-
-    provision_asns()
-
-    provision_interfaces()
-
-    provision_networks()
-
-    provision_bgp()
+    # provision_customfields()
+    #
+    # provision_orga()
+    #
+    # provision_config_context()
+    #
+    # provision_devices()
+    #
+    # provision_rir_aggregates()
+    #
+    # provision_asns()
+    #
+    # provision_interfaces()
+    #
+    # provision_networks()
+    #
+    # provision_bgp()
 
     provision_vlanintf()
 
