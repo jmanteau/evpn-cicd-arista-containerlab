@@ -688,7 +688,7 @@ def provision_networks():
     }
 
 
-def provision_vlanintf():
+def provision_vlanintf() -> None:
     for node,params in evpnlab["topology"]["nodes"].items():
         if not 'leaf' in node:
             continue
