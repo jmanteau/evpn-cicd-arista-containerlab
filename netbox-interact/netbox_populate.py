@@ -704,10 +704,43 @@ def provision_vlanintf() -> None:
             intf_vxlan1 = operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=str(device), name='Vxlan1'))
             evpnl2vpn.extend(x['id'] for x in intf_vxlan1.custom_fields['evpn_l2vpn'])
             evpnl3vpn.extend(x['id'] for x in intf_vxlan1.custom_fields['evpn_l2vpn'])
-            intf_vxlan1.update({'tagged_vlans':evpnl2vpn})
+            # intf_vxlan1.update({'tagged_vlans':evpnl2vpn})
 
 
 def provision_bgp() -> None:
+    '''https://www.ciscolive.com/c/dam/r/ciscolive/emea/docs/2019/pdf/BRKSPG-2303.pdf'''
+    '''https://github.com/openconfig/public/tree/master/release/models/bgp'''
+
+    def check_netbox_bgp_plugins():
+        plugin=list(filter(lambda x: x['package'] == 'netbox_bgp', list(nb.plugins.installed_plugins())))
+        return plugin
+
+    def create_session(data: dict) -> None:
+        '''
+
+        '''
+        x_session=dict(
+            name=data['group_peer'],
+            site=operator.attrgetter('dcim.devices')(nb).get(**dict(name=data['device'])).site.id,
+            device=operator.attrgetter('dcim.devices')(nb).get(**dict(name=data['device'])).id,
+            local_as=operator.attrgetter('dcim.devices')(nb).get(**dict(name=data['device'])).custom_fields['evpn_asn']
+            ['id'],
+            remote_as=operator.attrgetter('ipam.asns')(nb).get(**dict(asn=data['params']['p2p_remote_asn'])).id,
+            local_address=operator.attrgetter('ipam.ip-addresses')(nb).get(**dict(
+                interface=data['params']['p2p_int_local'],device=data['device'])).id,
+            remote_address=operator.attrgetter('ipam.ip-addresses')(nb).get(**dict(
+                address=data['params']['p2p_remote_peer'])).id,
+            status='active',
+            peer_group=operator.attrgetter('plugins.bgp.bgppeergroup')(nb).get(**dict(
+                name=data['group_peer'])).id
+        )
+        try:
+            operator.attrgetter('plugins.bgp.bgpsession')(nb).create(x_session)
+        except:
+            pass
+
+
+
 
     def get_bgp_neighbor(inventory: list):
         '''
@@ -727,18 +760,20 @@ def provision_bgp() -> None:
                     intf_neighbor=str(intf.connected_endpoints[0])
                     rem_device=str(intf.connected_endpoints[0].device)
                     asn_neighbor=intf.connected_endpoints[0].device.custom_fields.get("evpn_asn")['asn']
-                    peer_neighbor=(list(operator.attrgetter(attr_nb)(nb).filter(**{"device":rem_device,
+                    peer_neighbor=operator.attrgetter(attr_nb)(nb).get(**{"device":rem_device,
                                                                                    "interface":intf_neighbor
-                                                                                   })))
-                    if 0 != len(peer_neighbor):
+                                                                                   })
+                    if peer_neighbor:
                         bgp_tables.append(dict(
-                            device=device['host'],params=[{'p2p_int_local': str(intf), 'p2p_remote_int': intf_neighbor,
-                                                           'p2p_remote_peer': str(peer_neighbor[0]).split('/')[0],
+                            device=device['host'],params={'p2p_int_local': str(intf), 'p2p_remote_int': intf_neighbor,
+                                                           'p2p_remote_peer': str(peer_neighbor),
                                                            'p2p_remote_device': rem_device,
-                                                           'p2p_remote_asn': asn_neighbor}]
+                                                           'p2p_remote_asn': asn_neighbor,
+                                                           },
+                            group_peer= 'ipv4-underlay-peers'
                         )
                         )
-                        param=dict(neighbor=str(peer_neighbor[0]).split('/')[0],remote_as=asn_neighbor)
+                        param=dict(neighbor=str(peer_neighbor).split('/')[0],remote_as=asn_neighbor)
                         local_ctx[device['host']]['bgp'][0]['ipv4-underlay-peers'].append(param)
         for device in inventory:
             for intf in device['interfaces']:
@@ -748,22 +783,25 @@ def provision_bgp() -> None:
                 if rem_rolde_device != 'server':
                     rem_device=str(intf.connected_endpoints[0].device)
                     asn_neighbor = intf.connected_endpoints[0].device.custom_fields.get("evpn_asn")['asn']
-                    peer_neighbor=list(operator.attrgetter(attr_nb)(nb).filter(**{"device":rem_device,
+                    peer_neighbor=operator.attrgetter(attr_nb)(nb).get(**{"device":rem_device,
                                                                                   "interface":"Loopback0"}
-                                                                               ))
+                                                                               )
                     if 'server' != str(intf.connected_endpoints[0].device.device_role):
                         bgp_tables.append(dict(
-                            device=device['host'], params=[{'p2p_int_local': "Loopback0", 'p2p_remote_int': "Loopback0",
-                                                            'p2p_remote_peer': str(peer_neighbor[0]).split('/')[0],
+                            device=device['host'], params={'p2p_int_local': "Loopback0", 'p2p_remote_int': "Loopback0",
+                                                            'p2p_remote_peer': str(peer_neighbor),
                                                             'p2p_remote_device': rem_device,
-                                                            'p2p_remote_asn': asn_neighbor}]
+                                                            'p2p_remote_asn': asn_neighbor}
+                                                           ,
+                            group_peer= 'evpn-overlay-peers'
                         )
                         )
-                        param = dict(neighbor=str(peer_neighbor[0]).split('/')[0], remote_as=asn_neighbor)
+                        param = dict(neighbor=str(peer_neighbor).split('/')[0], remote_as=asn_neighbor)
                         local_ctx[device['host']]['bgp'][1]['evpn-overlay-peers'].append(param)
 
         return bgp_tables,local_ctx
 
+    bgp_plugins=check_netbox_bgp_plugins()
     spines_lst=list(operator.attrgetter("dcim.devices")(nb).filter(**{'role':"spine"}))
     leafs_lst=list(operator.attrgetter("dcim.devices")(nb).filter(**{'role':"leaf"}))
     inventory,attr_nb,obj_nb=list(),"dcim.interfaces","device"
@@ -784,7 +822,17 @@ def provision_bgp() -> None:
         if config_ctx != local_ctx['local-routing']:
             device.update({'local_context_data':local_ctx})
 
-def provision_rir_aggregates():
+    if bgp_plugins:
+        if not operator.attrgetter('plugins.bgp.bgppeergroup')(nb).get(**dict(name='ipv4-underlay-peers')):
+            operator.attrgetter('plugins.bgp.bgppeergroup')(nb).create(dict(name='ipv4-underlay-peers',
+                                                                            description='ipv4-underlay-peers')
+                                                                       )
+        for data in bgp_params[0]:
+            if data['group_peer']=='ipv4-underlay-peers':
+                create_session(data)
+
+
+def provision_rir_aggregates() -> None:
     import slugify
     slug=slugify.slugify(text='private-subnets')
     if operator.attrgetter('ipam.rirs')(nb).get(name='private-subnets') is None:
@@ -793,26 +841,25 @@ def provision_rir_aggregates():
                                                      'is_private': True}
                                                      )
 
-
 def provision_all():
 
-    # provision_customfields()
-    #
-    # provision_orga()
-    #
-    # provision_config_context()
-    #
-    # provision_devices()
-    #
-    # provision_rir_aggregates()
-    #
-    # provision_asns()
-    #
-    # provision_interfaces()
-    #
-    # provision_networks()
-    #
-    # provision_bgp()
+    provision_customfields()
+
+    provision_orga()
+
+    provision_config_context()
+
+    provision_devices()
+
+    provision_rir_aggregates()
+
+    provision_asns()
+
+    provision_interfaces()
+
+    provision_networks()
+
+    provision_bgp()
 
     provision_vlanintf()
 
