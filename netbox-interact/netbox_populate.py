@@ -212,7 +212,7 @@ def provision_orga():
     tenant_rainbow = get_or_create(nb.tenancy.tenants, name="Rainbow", slug="rainbow")
 
     global site_palette
-    site_palette = get_or_create(nb.dcim.sites, name="Palette", slug="palette")
+    site_palette = get_or_create(nb.dcim.sites, name="Palette", slug="palette", time_zone="Europe/Paris")
     site_palette.tenant = tenant_rainbow
     site_palette.save()
 
@@ -697,7 +697,7 @@ def provision_vlanintf() -> None:
             vlans,evpnl2vpn,evpnl3vpn = list(),list(),list()
             intf_vlan = operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=str(device), name='VLAN_DATABASE'))
             vlans.extend(list(operator.attrgetter('ipam.vlans')(nb).get(**dict(
-                vid=str(x['id']))).id for x in params['vlans']
+                vid=str(x['id']),group=str(device))).id for x in params['vlans']
                               )
                          )
             intf_vlan.update({'tagged_vlans': vlans})
@@ -732,25 +732,49 @@ def provision_bgp() -> None:
                 address=data['params']['p2p_remote_peer'])).id,
             status='active',
             peer_group=operator.attrgetter('plugins.bgp.bgppeergroup')(nb).get(**dict(
-                name=data['group_peer'])).id
-        )
+                name=data['group_peer'])).id,
+            custom_fields=dict(
+                BGP_remote_device=operator.attrgetter('dcim.devices')(nb).get(**dict(
+                    name=data['params']['p2p_remote_device'])).id,
+                BGP_address_family=data['group_peer'].split('-')[0].capitalize()
+            ))
         try:
             operator.attrgetter('plugins.bgp.bgpsession')(nb).create(x_session)
         except:
+            operator.attrgetter('plugins.bgp.bgpsession')(nb).update(x_session)
+        finally:
             pass
-
-
-
 
     def get_bgp_neighbor(inventory: list):
         '''
 
         '''
+        def get_password():
+            import random, string
+            nb_digits=3
+            nb_spe_char=2
+            chars= string.ascii_letters + string.digits + string.punctuation
+            password_lgth = 10
+            password_list=list()
+            for x in range(2):
+                password_gen = ""
+                for d in range(nb_digits):
+                    password_gen += random.choice(string.digits)
+                for s in range(nb_spe_char):
+                    password_gen += random.choice(string.punctuation)
+                for i in range(password_lgth-nb_digits-nb_spe_char):
+                    password_gen += random.choice(string.ascii_letters)
+                password_list.append(password_gen)
+            return password_list
+
         bgp_tables=list()
         local_ctx = {}
         attr_nb="ipam.ip-addresses"
+        passwords=get_password()
         for device in inventory:
             local_ctx[device['host']] = dict(bgp=[{'ipv4-underlay-peers': []},{'evpn-overlay-peers': []}])
+            local_ctx[device['host']]['bgp'][0]['ipv4-underlay-peers'].append(dict(password=passwords[0]))
+            local_ctx[device['host']]['bgp'][1]['evpn-overlay-peers'].append(dict(password=passwords[1]))
         for device in inventory:
             for intf in device['interfaces']:
                 if intf.cable is None:
@@ -773,8 +797,8 @@ def provision_bgp() -> None:
                             group_peer= 'ipv4-underlay-peers'
                         )
                         )
-                        param=dict(neighbor=str(peer_neighbor).split('/')[0],remote_as=asn_neighbor)
-                        local_ctx[device['host']]['bgp'][0]['ipv4-underlay-peers'].append(param)
+                        # params=dict(neighbor=str(peer_neighbor).split('/')[0],remote_as=asn_neighbor)
+                        # local_ctx[device['host']]['bgp'][0]['ipv4-underlay-peers'].append(params)
         for device in inventory:
             for intf in device['interfaces']:
                 if intf.cable is None :
@@ -796,8 +820,8 @@ def provision_bgp() -> None:
                             group_peer= 'evpn-overlay-peers'
                         )
                         )
-                        param = dict(neighbor=str(peer_neighbor).split('/')[0], remote_as=asn_neighbor)
-                        local_ctx[device['host']]['bgp'][1]['evpn-overlay-peers'].append(param)
+                        # params = dict(neighbor=str(peer_neighbor).split('/')[0], remote_as=asn_neighbor)
+                        # local_ctx[device['host']]['bgp'][1]['evpn-overlay-peers'].append(params)
 
         return bgp_tables,local_ctx
 
@@ -815,22 +839,53 @@ def provision_bgp() -> None:
 
     for device in spines_lst+leafs_lst:
         bgp_param=bgp_params[1][str(device)]
-        # if None == device.config_context['local-routing'].get('bgp'):
         config_ctx=device.config_context['local-routing']
         config_ctx.update(bgp_param)
         local_ctx={'local-routing':config_ctx}
-        if config_ctx != local_ctx['local-routing']:
-            device.update({'local_context_data':local_ctx})
-
+        device.update({'local_context_data':local_ctx})
+        '''bug object as customfield'''
+        '''https://github.com/netbox-community/pynetbox/issues/457'''
     if bgp_plugins:
+
+        cf_bgp_addr_family = get_or_create(
+            nb.extras.custom_fields,
+            search="name",
+            name="BGP_address_family",
+            content_types=["netbox_bgp.bgpsession"],
+            type="select",
+            label="Addr family",
+            required=True,
+            choices=['Ipv4','Vpnv4','Evpn','vrf']
+        )
+
+        cf_bgp_remote_device = get_or_create(
+            nb.extras.custom_fields,
+            search="name",
+            name="BGP_remote_device",
+            content_types=["netbox_bgp.bgpsession"],
+            type="object",
+            label="Remote Device",
+            required=True,
+            object_type='dcim.device'
+        )
+
         if not operator.attrgetter('plugins.bgp.bgppeergroup')(nb).get(**dict(name='ipv4-underlay-peers')):
             operator.attrgetter('plugins.bgp.bgppeergroup')(nb).create(dict(name='ipv4-underlay-peers',
                                                                             description='ipv4-underlay-peers')
                                                                        )
-        for data in bgp_params[0]:
-            if data['group_peer']=='ipv4-underlay-peers':
-                create_session(data)
+        if not operator.attrgetter('plugins.bgp.bgppeergroup')(nb).get(**dict(name='evpn-overlay-peers')):
+            operator.attrgetter('plugins.bgp.bgppeergroup')(nb).create(dict(name='evpn-overlay-peers',
+                                                                            description='evpn-overlay-peers'))
 
+        for data in bgp_params[0]:
+            create_session(data)
+
+    operator.attrgetter('plugins.bgp.prefix-list')(nb).create(dict(name='pl-loopbacks-evpn-overlay',
+                                                                   description='pl-loopbacks-evpn-overlay', family="")
+                                                              )
+
+    operator.attrgetter('plugins.bgp.routing-policy')(nb).create(dict(name='rm-conn-2-bgp', description='rm-conn-2-bgp')
+                                                                 )
 
 def provision_rir_aggregates() -> None:
     import slugify

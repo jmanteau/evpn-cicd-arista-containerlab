@@ -47,14 +47,7 @@ topology:
           id: 111
           name: Tenant_A_Zone_2
           vrf: Tenant_A_Zone
-        -
-          id: 210
-          name: Tenant_A_Zone_3
-          vrf: Tenant_B_Zone
-        -
-          id: 211
-          name: Tenant_A_Zone_4
-          vrf: Tenant_B_Zone
+
     spine1:
       kind: ceos
       mgmt_ipv4: 172.100.100.11
