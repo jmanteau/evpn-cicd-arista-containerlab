@@ -22,19 +22,19 @@ topology:
         -
           id: 110
           name: Tenant_A_Zone_1
-          vrf: Tenant_A_Zone
+          vrf: Zone-A
         -
           id: 111
           name: Tenant_A_Zone_2
-          vrf: Tenant_A_Zone
+          vrf: Zone-A
         -
           id: 210
           name: Tenant_A_Zone_3
-          vrf: Tenant_B_Zone
+          vrf: Zone-B
         -
           id: 211
           name: Tenant_A_Zone_4
-          vrf: Tenant_B_Zone
+          vrf: Zone-B
     leaf2:
       kind: ceos
       mgmt_ipv4: 172.100.100.5
@@ -42,11 +42,11 @@ topology:
         -
           id: 110
           name: Tenant_A_Zone_1
-          vrf: Tenant_A_Zone
+          vrf: Zone-A
         -
           id: 111
           name: Tenant_A_Zone_2
-          vrf: Tenant_A_Zone
+          vrf: Zone-A
 
     spine1:
       kind: ceos

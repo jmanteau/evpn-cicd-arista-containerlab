@@ -178,6 +178,12 @@ def get_or_create(concept, search="slug", **kwargs):
             if (tmp := concept.get(prefix=kwargs[search])) is not None
             else concept.create(**kwargs)
         )
+    elif search == "prefix2":
+        nb_object = (
+            tmp
+            if (tmp := concept.get(prefix=kwargs['prefix'],vrf_id=kwargs['vrf'])) is not None
+            else concept.create(**kwargs)
+        )
     elif search == "name":
         nb_object = (
             tmp
@@ -194,7 +200,7 @@ def get_or_create(concept, search="slug", **kwargs):
     elif search == "vlan":
         nb_object = (
             tmp
-            if (tmp := concept.get(vid=kwargs["vid"])) is not None
+            if (tmp := concept.get(vid=kwargs["vid"],group_id=kwargs["group"])) is not None
             else concept.create(kwargs)
         )
     elif search == "rd":
@@ -621,19 +627,26 @@ def provision_networks():
         custom_fields={"evpn_vni": 10},
     )
 
+    # vrfb = get_or_create(
+    #     nb.ipam.vrfs,
+    #     search="name",
+    #     name="Zone-B",
+    #     rd="192.168.255.0:20",
+    #     tenant=tenant_rainbow.id,
+    #     custom_fields={"evpn_vni": 20},
+    # )
     vrfb = get_or_create(
         nb.ipam.vrfs,
-        search="name",
+        search="rd",
         name="Zone-B",
         rd="192.168.255.0:20",
         tenant=tenant_rainbow.id,
         custom_fields={"evpn_vni": 20},
     )
-
     # Create Prefix
     prefix1 = get_or_create(
         nb.ipam.prefixes,
-        search="prefix",
+        search="prefix2",
         prefix="10.1.10.0/24",
         vrf=vrfa.id,
         vlan=vl110.id,
@@ -644,7 +657,7 @@ def provision_networks():
 
     prefix2 = get_or_create(
         nb.ipam.prefixes,
-        search="prefix",
+        search="prefix2",
         prefix="10.1.11.0/25",
         vrf=vrfa.id,
         vlan=vl111.id,
@@ -655,7 +668,7 @@ def provision_networks():
 
     prefix3 = get_or_create(
         nb.ipam.prefixes,
-        search="prefix",
+        search="prefix2",
         prefix="10.2.10.0/26",
         vrf=vrfb.id,
         vlan=vl210.id,
@@ -666,7 +679,7 @@ def provision_networks():
 
     prefix4 = get_or_create(
         nb.ipam.prefixes,
-        search="prefix",
+        search="prefix2",
         prefix="10.2.11.0/27",
         vrf=vrfa.id,
         vlan=vl211.id,
@@ -682,29 +695,27 @@ def provision_networks():
         cf_evpn_assignment_append(vxlan1, "evpn_l3vpn", vrfa)
         cf_evpn_assignment_append(vxlan1, "evpn_l3vpn", vrfb)
 
-    vlaninfts = {
-        "leaf1": {"Vl110": "10.1.10.1", "Vl111": "10.1.11.1", "Vl210": "10.2.10.1"},
-        "leaf2": {"Vl110": "10.1.10.1", "Vl210": "10.2.10.1", "Vl211": "10.2.11.1"},
-    }
-
 
 def provision_vlanintf() -> None:
     for node,params in evpnlab["topology"]["nodes"].items():
         if not 'leaf' in node:
             continue
         device=operator.attrgetter('dcim.devices')(nb).get(**dict(name=node))
-        if device:
-            vlans,evpnl2vpn,evpnl3vpn = list(),list(),list()
-            intf_vlan = operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=str(device), name='VLAN_DATABASE'))
-            vlans.extend(list(operator.attrgetter('ipam.vlans')(nb).get(**dict(
-                vid=str(x['id']),group=str(device))).id for x in params['vlans']
-                              )
+        vlans=params['vlans']
+        for vlan in vlans:
+            intvlan=dict(device=device.id,
+                         name=str(vlan['id']),
+                         type="virtual",
                          )
-            intf_vlan.update({'tagged_vlans': vlans})
-            intf_vxlan1 = operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=str(device), name='Vxlan1'))
-            evpnl2vpn.extend(x['id'] for x in intf_vxlan1.custom_fields['evpn_l2vpn'])
-            evpnl3vpn.extend(x['id'] for x in intf_vxlan1.custom_fields['evpn_l2vpn'])
-            # intf_vxlan1.update({'tagged_vlans':evpnl2vpn})
+            if vlan['vrf']:
+                intvlan['vrf']=operator.attrgetter('ipam.vrfs')(nb).get(**dict(name=vlan['vrf'],
+                                                                                description=node)).id
+            nb_object=(
+                tmp
+                if (tmp := operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=node,name=str(vlan['id'])))
+                   ) is not None
+                else operator.attrgetter('dcim.interfaces')(nb).create(intvlan)
+            )
 
 
 def provision_bgp() -> None:
@@ -898,23 +909,23 @@ def provision_rir_aggregates() -> None:
 
 def provision_all():
 
-    provision_customfields()
+    # provision_customfields()
+    #
+    # provision_orga()
+    #
+    # provision_config_context()
+    #
+    # provision_devices()
+    #
+    # provision_rir_aggregates()
+    #
+    # provision_asns()
+    #
+    # provision_interfaces()
+    #
+    # provision_networks()
 
-    provision_orga()
-
-    provision_config_context()
-
-    provision_devices()
-
-    provision_rir_aggregates()
-
-    provision_asns()
-
-    provision_interfaces()
-
-    provision_networks()
-
-    provision_bgp()
+    # provision_bgp()
 
     provision_vlanintf()
 

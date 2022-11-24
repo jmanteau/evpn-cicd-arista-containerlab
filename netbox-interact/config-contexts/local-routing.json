@@ -17,6 +17,15 @@
                     ]
                 }
             ]
+        },
+        "router-bfd":
+        {
+            "multihop":
+            {
+                "interval": 100,
+                "min_rx": 100,
+                "multiplier": 3
+            }
         }
     }
 }

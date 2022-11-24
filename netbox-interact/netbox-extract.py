@@ -29,7 +29,7 @@ def get_netbox():
 def get_object(nb: object, api_attr: str, param: dict):
     if api_attr == 'ipam.ip-addresses':
         respond = operator.attrgetter(api_attr)(nb).get(**param)
-        return str(respond)
+        return respond
     elif api_attr == 'plugins.bgp.bgpsession':
         respond = list(operator.attrgetter(api_attr)(nb).filter(**param))
         return respond
@@ -39,7 +39,21 @@ def get_object(nb: object, api_attr: str, param: dict):
     elif api_attr == 'dcim.interfaces':
         respond=list(operator.attrgetter(api_attr)(nb).filter(**param))
         return respond
-
+    elif api_attr == 'plugins.bgp.prefix-list':
+        respond=operator.attrgetter(api_attr)(nb).get(**param)
+        return respond
+    elif api_attr == "ipam.prefixes":
+        respond = operator.attrgetter(api_attr)(nb).get(**param)
+        return respond
+    elif api_attr == 'plugins.bgp.routing-policy':
+        respond = operator.attrgetter(api_attr)(nb).get(**param)
+        return respond
+    elif api_attr == 'ipam.vlans':
+        respond = operator.attrgetter(api_attr)(nb).get(**param)
+        return respond
+    elif api_attr == 'ipam.vrfs':
+        respond = operator.attrgetter(api_attr)(nb).get(**param)
+        return respond
 
 def build_peer_group(param: str):
     sub_ctx = {}
@@ -116,6 +130,15 @@ def build_local_users(param: object):
         sub_ctx[key]=k
     return sub_ctx
 
+def build_vrfs_lists(param: str):
+    sub_ctx = {}
+    respond = get_object(nb,'dcim.interfaces',dict(device=param, name='Vxlan1'))[0]
+    vrf_list=respond.custom_fields['evpn_l3vpn']
+    sub_ctx['MGMT']=dict(ip_routing=False)
+    for data in vrf_list:
+        sub_ctx[data['name']]=dict(tenant= 'TBD',ip_routing=True)
+    return sub_ctx
+
 def build_spanning_tree(param: object):
     sub_ctx = {}
     role=str(param.device_role).lower()
@@ -133,12 +156,19 @@ def build_mgmt_api_http(param: object):
     return sub_ctx
 
 def build_ethernet_interfaces(param: object):
+    def build_trunk_vlans(param: list):
+        vlanid_list=list()
+        list(filter(lambda x: vlanid_list.append(str(x.vid)), param))
+        vlans=",".join(vlanid_list)
+        return vlans
+
     sub_ctx = {}
     interface_list = get_object(nb,'dcim.interfaces',dict(device=str(param)))
     for data in interface_list:
         interface=str(data).lower()
         if interface.startswith('ethernet'):
-            addr=get_object(nb, 'ipam.ip-addresses',dict(device=str(param), interface=str(data)))
+            addr=str(get_object(nb, 'ipam.ip-addresses',dict(device=str(param), interface=str(data))))
+            is_lacp=data.lag
             if addr!='None':
                 des=f'p2p_link_to_{str(data.connected_endpoints[0].device)}_{str(data.connected_endpoints[0])}'
                 sub_ctx[str(data)]=dict(
@@ -154,6 +184,20 @@ def build_ethernet_interfaces(param: object):
                 )
             else:
                 des=f'p2p_link_to_{str(data.connected_endpoints[0].device)}_{str(data.connected_endpoints[0])}'
+                mode,vlans='access',1
+                if data.mode:
+                    xmode=str(data.mode).lower()
+                    if xmode=='tagged (all)':
+                        mode='trunk'
+                        vlandatabase = list(filter(lambda x: str(x) == 'VLAN_DATABASE', interface_list))[0].tagged_vlans
+                        vlans = build_trunk_vlans(vlandatabase)
+                    elif xmode=='tagged':
+                        if len(data.tagged_vlans) == 1:
+                            mode='access'
+                            vlans=data.tagged_vlans[0].vid
+                        elif len(data.tagged_vlans) > 1:
+                            mode='trunk'
+                            vlans = build_trunk_vlans(data.tagged_vlans)
                 sub_ctx[str(data)]=dict(
                     peer=str(data.connected_endpoints[0].device),
                     peer_interface=str(data.connected_endpoints[0]),
@@ -161,12 +205,15 @@ def build_ethernet_interfaces(param: object):
                     description=des,
                     type='switched',
                     shutdown=False if data.enabled==True else True,
-                    mode='trunk',
-                    vlans=[],
+                    mode=mode,
+                    vlans=vlans,
                     spanning_tree_bpdufilter= False,
-                    spanning_tree_bpduguard= False,
-                    channel_group=dict(id=2,mode='active')
+                    spanning_tree_bpduguard= False
                )
+            if is_lacp:
+                sub_ctx[str(data)] = dict(channel_group=dict(id=str(is_lacp).lower().split('po')[-1],
+                                                             mode='active')
+                                          )
     return sub_ctx
 
 def build_loopback_interfaces(param: object):
@@ -175,13 +222,98 @@ def build_loopback_interfaces(param: object):
     for data in interface_list:
         interface=str(data).lower()
         if interface.startswith('loopback'):
-            addr=get_object(nb, 'ipam.ip-addresses',dict(device=str(param), interface=str(data)))
+            addr=str(get_object(nb, 'ipam.ip-addresses',dict(device=str(param), interface=str(data))))
             sub_ctx[str(data)]=dict(
                 description=data.description,
                 shutdown=False if data.enabled==True else True,
                 ip_address=addr,
             )
     return sub_ctx
+
+def build_prefix_lists(param: object):
+    # TODO https://github.com/k01ek/netbox-bgp/issues/112
+    sub_ctx = {}
+    role=str(param.device_role)
+    if role=='leaf':
+        respond=get_object(nb,'plugins.bgp.prefix-list',dict(name='pl-loopbacks-evpn-overlay'))
+        loopback0_subnet=str(get_object(nb,"ipam.prefixes",dict(role="evpn-loopback")))
+        loopback1_subnet = str(get_object(nb, "ipam.prefixes", dict(role="evpn-vtep")))
+        sub_ctx[str(respond)]=dict(sequence_numbers={
+            '10':{
+                'action': f'permit {loopback0_subnet} eq 32'
+            },
+            '20':{
+                'action': f'permit {loopback1_subnet} eq 32'
+            }
+                                                     }
+        )
+    else:
+        sub_ctx=None
+    return sub_ctx
+
+def build_route_maps():
+    # TODO https://github.com/k01ek/netbox-bgp/issues/112
+    sub_ctx = {}
+    respond=str(get_object(nb,'plugins.bgp.routing-policy',dict(name='rm-conn-2-bgp')))
+    prefix_name=str(get_object(nb,'plugins.bgp.prefix-list',dict(name='pl-loopbacks-evpn-overlay')))
+    sub_ctx[respond]=dict(sequence_numbers={
+            '10':{
+                'type': 'permit',
+                'match':[
+                    f"ip address prefix-list {prefix_name}"
+                ]
+            }
+                                                     }
+        )
+    return sub_ctx
+
+def build_bfd(param: object):
+    sub_ctx=param.config_context['local-routing']['router-bfd']
+    return sub_ctx
+
+def build_vlans_list(param: str):
+    sub_ctx={}
+    vlandatabase=get_object(nb,'dcim.interfaces',dict(device=param,name='VLAN_DATABASE'))[0]
+    for vlan in vlandatabase.tagged_vlans:
+        sub_ctx[vlan.vid]=dict(tenant='TBD',name=str(vlan))
+    return sub_ctx
+
+def build_vxlan_interfaces(param: object):
+    def build_vlans_list(param: list):
+        sub_ctx={}
+        for data in param:
+            vlan=get_object(nb,'ipam.vlans',dict(id=data['id']))
+            sub_ctx[str(vlan.vid)]=dict(vni=vlan.custom_fields['evpn_vni'])
+        return sub_ctx
+
+    def build_vrfs_list(param: list):
+        sub_ctx={}
+        for data in param:
+            vrf=get_object(nb,'ipam.vrfs',dict(id=data['id']))
+            sub_ctx[str(vrf)] = dict(vni=vrf.custom_fields['evpn_vni'])
+        return sub_ctx
+
+    sub_ctx = {}
+    interface_list = get_object(nb,'dcim.interfaces',dict(device=str(param),name='Vxlan1'))
+    for data in interface_list:
+        sub_ctx[str(data)]={
+            'description':data.description,
+            'vxlan':{
+                'source_interface': str(data.parent),
+                'udp_port': data.custom_fields['vxlan_udp_port'],
+                'vlans':build_vlans_list(data.custom_fields['evpn_l2vpn']),
+                'vrf':build_vrfs_list(data.custom_fields['evpn_l3vpn'])
+            }
+        }
+    return sub_ctx
+
+def build_vlan_interfaces(param: str):
+    sub_ctx = {}
+    interfaces_list=get_object(nb,'dcim.interfaces',dict(device=param))
+    for data in interfaces_list:
+        if str(data).lower().startswith('vlan'):
+
+
 nb = get_netbox()
 
 
@@ -205,9 +337,9 @@ rendered_dict = dict()
 # TODO after units tests move to 'for' iteration
 # for device in devices_list:
 structured_config["router_bgp"]['as'] = re.search(r"\d+", devices_list[0].custom_fields['evpn_asn']['display']).group()
-structured_config["router_bgp"]['router_id'] = get_object(nb, 'ipam.ip-addresses',
+structured_config["router_bgp"]['router_id'] = str(get_object(nb, 'ipam.ip-addresses',
                                                           dict(device=str(devices_list[0]),
-                                                               interface='Loopback0')).split('/')[0]
+                                                               interface='Loopback0'))).split('/')[0]
 structured_config["router_bgp"]['bgp_defaults'] = ["no bgp default ipv4-unicast",
                                                    "distance bgp 20 200 200",
                                                    "graceful-restart restart-time 300",
@@ -231,11 +363,18 @@ structured_config["vlan_internal_order"]["range"]["ending"] = 1199
 structured_config["spanning_tree"] = build_spanning_tree(devices_list[0])
 structured_config["local_users"]=build_local_users(devices_list[0])
 structured_config["clock"]=devices_list[0].site.time_zone
-# structured_config["vrfs"]  # TODO
+structured_config["vrfs"]=build_vrfs_lists(str(devices_list[0]))
 structured_config["management_api_http"]=build_mgmt_api_http(devices_list[0])
 structured_config["ethernet_interfaces"]= build_ethernet_interfaces(devices_list[0])
 structured_config["loopback_interfaces"]=build_loopback_interfaces(devices_list[0])
-structured_config["prefix_lists"]='todo'
+structured_config["prefix_lists"]=build_prefix_lists(devices_list[0])
+structured_config["route_maps"]=build_route_maps()
+structured_config["router_bfd"]=build_bfd(devices_list[0])
+structured_config["vlans"]=build_vlans_list(str(devices_list[0]))
+structured_config["ip_igmp_snooping"]["globally_enabled"] = True
+structured_config["vxlan_interface"]=build_vxlan_interfaces(devices_list[0])
+structured_config["vlan_interfaces"]=build_vlan_interfaces(devices_list[0])
+
 # nameservers = devices_list[0].config_context['system']['nameservers']['servers']
 # nameservers.sort(key=lambda x: x.get('order'))
 # structured_config["name_server"] = nameservers
@@ -250,18 +389,13 @@ structured_config["prefix_lists"]='todo'
 
 #
 #
-# structured_config["vlan_interfaces"]  # TODO
-#
-# structured_config["vxlan_interface"]  # TODO
 #
 #
-# structured_config["route_maps"]  # TODO
+#
 #
 # structured_config["router_bfd"]  # TODO
 #
-# structured_config["vlans"]  # TODO
 #
-# structured_config["ip_igmp_snooping"]["globally_enabled"] = True
 #
 # structured_config["ip_virtual_router_mac_address"] = "00:00:00:00:00:01"
 #
