@@ -700,23 +700,35 @@ def provision_vlanintf() -> None:
     for node,params in evpnlab["topology"]["nodes"].items():
         if not 'leaf' in node:
             continue
-        device=operator.attrgetter('dcim.devices')(nb).get(**dict(name=node))
+        device_id=operator.attrgetter('dcim.devices')(nb).get(**dict(name=node)).id
         vlans=params['vlans']
         for vlan in vlans:
-            intvlan=dict(device=device.id,
+            vlan_id = operator.attrgetter('ipam.vlans')(nb).get(**(dict(vid=str(vlan['id']), group=node))).id
+            prefixe = operator.attrgetter('ipam.prefixes')(nb).get(**(dict(vlan_id=vlan_id))).available_ips.list()
+            intvlan=dict(device=device_id,
                          name=str(vlan['id']),
                          type="virtual",
+                         mode='access',
+                         untagged_vlan=vlan_id
                          )
             if vlan['vrf']:
-                intvlan['vrf']=operator.attrgetter('ipam.vrfs')(nb).get(**dict(name=vlan['vrf'],
-                                                                                description=node)).id
-            nb_object=(
+                intvlan['vrf']=operator.attrgetter('ipam.vrfs')(nb).get(**dict(name=vlan['vrf'],description=node)).id
+            nb_intvlan=(
                 tmp
-                if (tmp := operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=node,name=str(vlan['id'])))
+                if (tmp := operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=node,
+                                                                                 name=str(vlan['id'])))
                    ) is not None
                 else operator.attrgetter('dcim.interfaces')(nb).create(intvlan)
             )
-
+            intf_id = operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=node, name=str(vlan['id']))).id
+            ipaddress = dict(address=str(prefixe[0]), assigned_object_type='dcim.interface', assigned_object_id=intf_id)
+            nb_int=(
+                tmp
+                if (tmp := operator.attrgetter('ipam.ip-addresses')(nb).get(**dict(address=str(prefixe[0]),
+                                                                                   interface_id=str(intf_id)))
+                   ) is not None
+                else operator.attrgetter('ipam.ip-addresses')(nb).create(ipaddress)
+            )
 
 def provision_bgp() -> None:
     '''https://www.ciscolive.com/c/dam/r/ciscolive/emea/docs/2019/pdf/BRKSPG-2303.pdf'''
@@ -909,25 +921,27 @@ def provision_rir_aggregates() -> None:
 
 def provision_all():
 
-    # provision_customfields()
-    #
-    # provision_orga()
-    #
-    # provision_config_context()
-    #
-    # provision_devices()
-    #
-    # provision_rir_aggregates()
-    #
-    # provision_asns()
-    #
-    # provision_interfaces()
-    #
-    # provision_networks()
+    provision_customfields()
 
-    # provision_bgp()
+    provision_orga()
+
+    provision_config_context()
+
+    provision_devices()
+
+    provision_rir_aggregates()
+
+    provision_asns()
+
+    provision_interfaces()
+
+    provision_networks()
+
+    provision_bgp()
 
     provision_vlanintf()
+
+
 
 
 

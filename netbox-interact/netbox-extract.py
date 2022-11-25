@@ -76,7 +76,7 @@ def build_peer_group(param: str):
                                    ebgp_multihop="",
                                    password=password,
                                    send_community="all",
-                                   maximum_routes=0
+                                   maximum_routes=12000
                                    )
     return sub_ctx
 
@@ -114,7 +114,7 @@ def build_static_routes(param: object):
     sub_ctx = []
     respond = param.config_context['local-routing']['static-routes']['static']
     for k in respond:
-        prefixe=dict(vrf=k['vrf'],
+        prefixe=dict(vrf='MGT',
                     destination_address_prefix=k['prefix'],
                     gateway=k['next-hops'][0]['next-hop'],
                     metric=k['next-hops'][0]['metric']
@@ -167,6 +167,8 @@ def build_ethernet_interfaces(param: object):
     for data in interface_list:
         interface=str(data).lower()
         if interface.startswith('ethernet'):
+            if not data.connected_endpoints:
+                continue
             addr=str(get_object(nb, 'ipam.ip-addresses',dict(device=str(param), interface=str(data))))
             is_lacp=data.lag
             if addr!='None':
@@ -275,7 +277,7 @@ def build_vlans_list(param: str):
     sub_ctx={}
     vlandatabase=get_object(nb,'dcim.interfaces',dict(device=param,name='VLAN_DATABASE'))[0]
     for vlan in vlandatabase.tagged_vlans:
-        sub_ctx[vlan.vid]=dict(tenant='TBD',name=str(vlan))
+        sub_ctx[vlan.vid]=dict(name=str(vlan))
     return sub_ctx
 
 def build_vxlan_interfaces(param: object):
@@ -311,8 +313,28 @@ def build_vlan_interfaces(param: str):
     sub_ctx = {}
     interfaces_list=get_object(nb,'dcim.interfaces',dict(device=param))
     for data in interfaces_list:
-        if str(data).lower().startswith('vlan'):
+        try:
+            if int(str(data)):
+                addr=str(get_object(nb, 'ipam.ip-addresses',dict(device=str(param), interface=str(data))))
+                intvlan=f'Vl{str(data)}'
+                sub_ctx[intvlan]=dict(shutdown=False if data.enabled==True else True,ip_address=addr)
+                if data.vrf is not None:
+                    sub_ctx[intvlan]['vrf']=str(data.vrf)
+        except ValueError as e:
+            pass
+    return sub_ctx
 
+def build_name_server(param):
+    sub_ctx = {'source':{'vrf':'default'},'nodes':[]}
+    nameservers = param.config_context['system']['nameservers']['servers']
+    for server in nameservers:
+        sub_ctx['nodes'].append(server['address'])
+    return sub_ctx
+
+def build_ntp(param):
+    sub_ctx={}
+    sub_ctx=dict(local_interface={'name': 'TBD','vrf': 'default'},server=['tbd'])
+    return sub_ctx
 
 nb = get_netbox()
 
@@ -328,79 +350,63 @@ def ddict2dict(d):
     return dict(d)
 
 
-structured_config = ddict()
 
 ''' Get all devices object from netbox where device_role is not server value '''
 devices_list = list(operator.attrgetter('dcim.devices')(nb).filter(**dict(role='leaf'))) + list(
     operator.attrgetter('dcim.devices')(nb).filter(**dict(role='spine')))
-rendered_dict = dict()
-# TODO after units tests move to 'for' iteration
-# for device in devices_list:
-structured_config["router_bgp"]['as'] = re.search(r"\d+", devices_list[0].custom_fields['evpn_asn']['display']).group()
-structured_config["router_bgp"]['router_id'] = str(get_object(nb, 'ipam.ip-addresses',
-                                                          dict(device=str(devices_list[0]),
-                                                               interface='Loopback0'))).split('/')[0]
-structured_config["router_bgp"]['bgp_defaults'] = ["no bgp default ipv4-unicast",
-                                                   "distance bgp 20 200 200",
-                                                   "graceful-restart restart-time 300",
-                                                   "graceful-restart",
-                                                   "maximum-paths 4 ecmp 4"
-                                                   ]
-structured_config["router_bgp"]['peer_groups'] = build_peer_group(str(devices_list[0]))
-structured_config["router_bgp"]['address_family_ipv4']['peer_groups'] = build_address_family_ipv4(str(devices_list[0]))
-structured_config["router_bgp"]['redistribute_routes']['connected']['route_map']=get_object(nb,
-                                                                                            'plugins.bgp.routing-policy',
-                                                                                            param={}
-                                                                                            )
-structured_config["router_bgp"]['neighbors'] = build_peer_neighbors(str(devices_list[0]))
-structured_config["router_bgp"]['address_family_evpn']['peer_groups'] = build_address_family_evpn(str(devices_list[0]))
-structured_config["static_routes"] = build_static_routes(devices_list[0])
-structured_config["service_routing_protocols_model"] = "multi-agent"
-structured_config["ip_routing"] = True
-structured_config["vlan_internal_order"]["allocation"] = "ascending"
-structured_config["vlan_internal_order"]["range"]["beginning"] = 1006
-structured_config["vlan_internal_order"]["range"]["ending"] = 1199
-structured_config["spanning_tree"] = build_spanning_tree(devices_list[0])
-structured_config["local_users"]=build_local_users(devices_list[0])
-structured_config["clock"]=devices_list[0].site.time_zone
-structured_config["vrfs"]=build_vrfs_lists(str(devices_list[0]))
-structured_config["management_api_http"]=build_mgmt_api_http(devices_list[0])
-structured_config["ethernet_interfaces"]= build_ethernet_interfaces(devices_list[0])
-structured_config["loopback_interfaces"]=build_loopback_interfaces(devices_list[0])
-structured_config["prefix_lists"]=build_prefix_lists(devices_list[0])
-structured_config["route_maps"]=build_route_maps()
-structured_config["router_bfd"]=build_bfd(devices_list[0])
-structured_config["vlans"]=build_vlans_list(str(devices_list[0]))
-structured_config["ip_igmp_snooping"]["globally_enabled"] = True
-structured_config["vxlan_interface"]=build_vxlan_interfaces(devices_list[0])
-structured_config["vlan_interfaces"]=build_vlan_interfaces(devices_list[0])
+# devices_list = [operator.attrgetter('dcim.devices')(nb).get(**dict(name='leaf2'))]
+for device in devices_list:
+    structured_config = ddict()
+    print (str(device))
+    role=str(device.device_role)
+    structured_config["router_bgp"]['as'] = re.search(r"\d+", device.custom_fields['evpn_asn']['display']).group()
+    structured_config["router_bgp"]['router_id'] = str(get_object(nb, 'ipam.ip-addresses',
+                                                              dict(device=str(device),
+                                                                   interface='Loopback0'))).split('/')[0]
+    structured_config["router_bgp"]['address_family_evpn']['peer_groups'] = build_address_family_evpn(str(device))
+    structured_config["router_bgp"]['bgp_defaults'] = ["no bgp default ipv4-unicast",
+                                                       "distance bgp 20 200 200",
+                                                       "graceful-restart restart-time 300",
+                                                       "graceful-restart",
+                                                       "maximum-paths 4 ecmp 4"
+                                                       ]
+    structured_config["router_bgp"]['peer_groups'] = build_peer_group(str(device))
+    structured_config["router_bgp"]['address_family_ipv4']['peer_groups'] = build_address_family_ipv4(str(device))
+    structured_config["router_bgp"]['neighbors'] = build_peer_neighbors(str(device))
+    structured_config["static_routes"] = build_static_routes(device)
+    structured_config["service_routing_protocols_model"] = "multi-agent"
+    structured_config["ip_routing"] = True
+    structured_config["local_users"]=build_local_users(device)
+    structured_config["clock"]=device.site.time_zone
+    structured_config["management_api_http"]=build_mgmt_api_http(device)
+    structured_config["ethernet_interfaces"]= build_ethernet_interfaces(device)
+    structured_config["loopback_interfaces"]=build_loopback_interfaces(device)
+    structured_config["router_bfd"]=build_bfd(device)
+    structured_config["ip_igmp_snooping"]["globally_enabled"] = True
+    # structured_config["port_channel_interfaces"]=build_po_interfaces(device)
+    # structured_config["aaa_authorization"]=build_aaa_authorization(device)
+    structured_config["name_server"] = build_name_server(device)
+    # structured_config["ip_domain_lookup"] =
+    structured_config["ntp"] = build_ntp(device)
+    # structured_config["management_interfaces"]
+    structured_config["spanning_tree"] = build_spanning_tree(device)
+    if role=='leaf':
+        structured_config["router_bgp"]['redistribute_routes']['connected']['route_map'] = get_object(nb,
+                                                                                                      'plugins.bgp.routing-policy',
+                                                                                                      param={}
+                                                                                                      )
+        structured_config["vlan_internal_order"]["allocation"] = "ascending"
+        structured_config["vlan_internal_order"]["range"]["beginning"] = 1006
+        structured_config["vlan_internal_order"]["range"]["ending"] = 1199
+        structured_config["vrfs"]=build_vrfs_lists(str(device))
+        structured_config["prefix_lists"]=build_prefix_lists(device)
+        structured_config["route_maps"]=build_route_maps()
+        structured_config["vlans"]=build_vlans_list(str(device))
+        structured_config["vxlan_interface"]=build_vxlan_interfaces(device)
+        structured_config["vlan_interfaces"]=build_vlan_interfaces(device)
+        structured_config["ip_virtual_router_mac_address"] = "00:00:00:00:00:01" #TODO
+        # structured_config["virtual_source_nat_vrfs"]  # TODO
 
-# nameservers = devices_list[0].config_context['system']['nameservers']['servers']
-# nameservers.sort(key=lambda x: x.get('order'))
-# structured_config["name_server"] = nameservers
+    output = yaml.dump(ddict2dict(structured_config), allow_unicode=True, default_flow_style=False)
 
-#
-#
-
-#
-# structured_config["management_interfaces"]
-#
-#
-
-#
-#
-#
-#
-#
-#
-# structured_config["router_bfd"]  # TODO
-#
-#
-#
-# structured_config["ip_virtual_router_mac_address"] = "00:00:00:00:00:01"
-#
-# structured_config["virtual_source_nat_vrfs"]  # TODO
-
-output = yaml.dump(ddict2dict(structured_config), allow_unicode=True, default_flow_style=False)
-
-print(output)
+    print(output)
