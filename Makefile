@@ -145,7 +145,7 @@ awssetup:
 	wget https://github.com/docker/compose/releases/latest/download/docker-compose-$(OS)-$(ARCH)
 	sudo mv docker-compose-$(OS)-$(ARCH) /usr/local/bin/docker-compose
 	sudo chmod -v +x /usr/local/bin/docker-compose
-	sudo rm /usr/bin/docker-compose
+	sudo rm -f /usr/bin/docker-compose
 	sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
 	# exec sg docker "$0 $*"
 	# Containerlab install
@@ -165,8 +165,12 @@ else
 	~/.pyenv/bin/pyenv install 3.11.1  
 	~/.pyenv/bin/pyenv global 3.11 
 	sudo update-alternatives --install /usr/bin/python3 python3 ~/.pyenv/shims/python3.11 1
-	echo 'export PATH="~/.pyenv/bin:\$PATH"' >> ~/.bashrc
-	echo 'eval "$(pyenv init -)"' >> ~/.bashrc
+	echo 'export PATH="~/.pyenv/bin:$$PATH"' >> ~/.bashrc
+	echo 'export PYENV_ROOT="~/.pyenv"' >> ~/.bash_profile
+	echo 'export PATH="~/.pyenv/bin:$$PATH"' >> ~/.bash_profile
+	echo -e 'if command -v pyenv 1>/dev/null 2>&1; then\n  eval "$(pyenv init -)"\nfi' >> ~/.bash_profile
+	. ~/.bash_profile
+	exec "/bin/bash"
 endif
 	
 zsh:
