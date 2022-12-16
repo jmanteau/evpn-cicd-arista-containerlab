@@ -47,6 +47,8 @@ ifneq (,$(wildcard ./.env))
     include .env
     export
     ENV_FILE_PARAM = --env-file .env # Used for docker-compose
+else
+    $(error Env file does not exist! 'cp .env.template .env' and edit accordingly )
 endif
 
 # Optionnal Function
@@ -83,7 +85,7 @@ vagrantinstall: cmd-exists-vagrant
 startupaws: awslogin awsvmup
 
 ## 2️⃣️  (Inside 🎛 ) ⚙️  setup prerequisites on the AWS instance (should be done only once)
-setupaws: awssetup ansible-setup awsceosimage images zsh 
+setupaws: awssetup ansible-setup awsceosimage images  
 
 ## 3️⃣️  (Inside 🎛 ) ▶️  launch lab on the AWS instance
 spinaws: labup 
@@ -144,11 +146,15 @@ awssetup:
 	sudo yum install -y containerlab
 	# Utils
 	sudo yum install -y git htop zsh 
-	git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ~/powerlevel10k
-	echo 'source ~/powerlevel10k/powerlevel10k.zsh-theme' >> ~/.zshrc
-	echo 'POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD=true' >> ~/.zshrc 
+	# Dev tools
+	sudo yum install gcc make zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel openssl-devel tk-devel libffi-devel xz-devel
+	#git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ~/powerlevel10k
+	#echo 'source ~/powerlevel10k/powerlevel10k.zsh-theme' >> ~/.zshrc
+	#echo 'POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD=true' >> ~/.zshrc 
 	# Ansible
-	sudo yum -y install python3 python3-pip
+	sudo amazon-linux-extras enable python3.8
+	sudo yum install -y python3.8
+	python3.8 -m ensurepip --upgrade
 
 zsh:
 	zsh
