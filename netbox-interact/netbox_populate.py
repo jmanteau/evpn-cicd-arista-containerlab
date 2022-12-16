@@ -965,8 +965,6 @@ def provision_bgp() -> None:
                             group_peer='evpn-overlay-peers'
                         )
                         )
-                        # params = dict(neighbor=str(peer_neighbor).split('/')[0], remote_as=asn_neighbor)
-                        # local_ctx[device['host']]['bgp'][1]['evpn-overlay-peers'].append(params)
         for device in inventory:
             for intf in device['interfaces']:
                 if 'mlag-ibgp' in [str(x) for x in intf.tagged_vlans] and intf.count_ipaddresses == 1:
