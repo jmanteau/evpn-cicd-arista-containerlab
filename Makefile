@@ -85,7 +85,7 @@ vagrantinstall: cmd-exists-vagrant
 startupaws: awslogin awsvmup
 
 ## 2️⃣️  (Inside 🎛 ) ⚙️  setup prerequisites on the AWS instance (should be done only once)
-setupaws: awssetup ansible-setup awsceosimage images tooling-setup
+setupaws: awssetup python-setup ansible-setup awsceosimage images tooling-setup
 
 ## 3️⃣️  (Inside 🎛 ) ▶️  launch lab on the AWS instance
 spinaws: labup 
@@ -140,9 +140,12 @@ awssetup:
 	sudo service docker start
 	sudo usermod -a -G docker ec2-user
 	sudo chkconfig docker on
-	wget https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)
-	sudo mv docker-compose-$(uname -s)-$(uname -m) /usr/local/bin/docker-compose
+	$(eval OS := $(shell uname -s))
+	$(eval ARCH := $(shell uname -m))
+	wget https://github.com/docker/compose/releases/latest/download/docker-compose-$(OS)-$(ARCH)
+	sudo mv docker-compose-$(OS)-$(ARCH) /usr/local/bin/docker-compose
 	sudo chmod -v +x /usr/local/bin/docker-compose
+	sudo rm /usr/bin/docker-compose
 	sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
 	# exec sg docker "$0 $*"
 	# Containerlab install
@@ -151,15 +154,21 @@ awssetup:
 	# Utils
 	sudo yum install -y git htop zsh 
 	# Dev tools
-	sudo yum install gcc make zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel openssl-devel tk-devel libffi-devel xz-devel
-	#git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ~/powerlevel10k
-	#echo 'source ~/powerlevel10k/powerlevel10k.zsh-theme' >> ~/.zshrc
-	#echo 'POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD=true' >> ~/.zshrc 
-	# Ansible
-	curl https://pyenv.run | bash
-	~/.pyenv/bin/pyenv install 3.11.1
+	sudo yum install -y gcc make zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel tk-devel libffi-devel xz-devel openssl11-devel openssl11
+	
+python-setup:
+ifneq ($(wildcard ~/.pyenv/.),)
+	@echo "Found Pyenv"
+else
+	@echo "Did not find Pyenv."
+	curl https://pyenv.run | bash 
+	~/.pyenv/bin/pyenv install 3.11.1  
+	~/.pyenv/bin/pyenv global 3.11 
 	sudo update-alternatives --install /usr/bin/python3 python3 ~/.pyenv/shims/python3.11 1
-
+	echo 'export PATH="~/.pyenv/bin:\$PATH"' >> ~/.bashrc
+	echo 'eval "$(pyenv init -)"' >> ~/.bashrc
+endif
+	
 zsh:
 	zsh
 
@@ -241,7 +250,7 @@ labclean:
 ansible-setup:
 	pip3 install ansible
 	pip3 install -r https://raw.githubusercontent.com/aristanetworks/ansible-avd/devel/ansible_collections/arista/avd/requirements.txt
-	~/.local/bin/ansible-galaxy collection install arista.avd
+	ansible-galaxy collection install arista.avd
 
 ## Check that you can communicate with all the nodes
 ansible-check: guard-LAB
