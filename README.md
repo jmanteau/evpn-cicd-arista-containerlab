@@ -48,7 +48,7 @@ make startuplocal
 ```
 sudo yum install -y git
 git clone https://github.com/jmanteau/evpn-cicd-arista-containerlab.git
-make setupaws && make netbox-start && sleep 60 && make netbox-provision
+make setupaws && make netbox-start && sleep 90 && make netbox-provision
 ```
 
 ### Using it
