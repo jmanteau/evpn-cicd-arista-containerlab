@@ -951,19 +951,20 @@ def provision_bgp() -> None:
                     peer_neighbor = operator.attrgetter(attr_nb)(nb).get(**{"device": rem_device,
                                                                             "interface": "Loopback0"}
                                                                          )
+                    next_hop_unchanged=all([str(intf.device.device_role)=='spine',
+                                            str(intf.connected_endpoints[0].device.device_role)=='leaf']
+                                           )
                     bgp_tables.append(dict(
                         device=device['host'], params={'p2p_int_local': "Loopback0", 'p2p_remote_int': "Loopback0",
                                                        'p2p_remote_peer': str(peer_neighbor),
                                                        'p2p_remote_device': rem_device,
                                                        'p2p_remote_asn': asn_neighbor,
-                                                       'next_hop_unchanged':True
+                                                       'next_hop_unchanged':True if next_hop_unchanged is True else False
                                                        }
                             ,
                             group_peer='evpn-overlay-peers'
                         )
                         )
-                        # params = dict(neighbor=str(peer_neighbor).split('/')[0], remote_as=asn_neighbor)
-                        # local_ctx[device['host']]['bgp'][1]['evpn-overlay-peers'].append(params)
         for device in inventory:
             for intf in device['interfaces']:
                 if 'mlag-ibgp' in [str(x) for x in intf.tagged_vlans] and intf.count_ipaddresses == 1:
