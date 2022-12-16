@@ -294,6 +294,7 @@ netbox-update:
 
 ## Start Netbox
 netbox-start:
+	cp docker-compose.override.yml netbox-docker/docker-compose.override.yml
 	cd netbox-docker && sudo docker-compose up -d
 
 ## Stop Netbox
