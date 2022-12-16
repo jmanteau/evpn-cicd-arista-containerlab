@@ -140,6 +140,10 @@ awssetup:
 	sudo service docker start
 	sudo usermod -a -G docker ec2-user
 	sudo chkconfig docker on
+	wget https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)
+	sudo mv docker-compose-$(uname -s)-$(uname -m) /usr/local/bin/docker-compose
+	sudo chmod -v +x /usr/local/bin/docker-compose
+	sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
 	# exec sg docker "$0 $*"
 	# Containerlab install
 	sudo yum-config-manager --add-repo=https://yum.fury.io/netdevops/ && echo "gpgcheck=0" | sudo tee -a /etc/yum.repos.d/yum.fury.io_netdevops_.repo
@@ -295,6 +299,16 @@ netbox-logs:
 ## Populate Netbox
 netbox-provision:
 	cd netbox-interact && python3 netbox_populate.py
+
+## Reset Netbox Database
+netbox-dbreset:
+	cd netbox-docker && docker-compose stop
+	cd netbox-docker && docker-compose rm --stop --force -v postgres
+	cd netbox-docker && docker volume rm netbox-docker_netbox-postgres-data
+	cd netbox-docker && docker-compose up -d --no-deps postgres
+	sleep 2
+	cd netbox-docker && docker-compose exec -T postgres sh -c "psql -U netbox -d postgres -c 'DROP DATABASE IF EXISTS netbox;'"
+	cd netbox-docker && docker-compose exec -T postgres sh -c "psql -U netbox -d postgres -c 'CREATE DATABASE netbox;'"
 
 ## Start Woodpecker
 woodpecker-start:
