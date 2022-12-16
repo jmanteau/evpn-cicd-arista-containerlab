@@ -2,3 +2,7 @@ pynetbox
 pyyaml
 ruamel.yaml
 requests
+pycryptodome
+cryptography
+python-generate-mac
+python-slugify

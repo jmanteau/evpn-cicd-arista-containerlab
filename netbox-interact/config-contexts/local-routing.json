@@ -7,7 +7,7 @@
             [
                 {
                     "prefix": "0.0.0.0/0",
-                    "vrf": "{{ VRF_MANAGEMENT }}",
+                    "vrf": "MGMT",
                     "next-hops":
                     [
                         {

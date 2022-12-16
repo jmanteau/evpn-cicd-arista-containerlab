@@ -3,12 +3,9 @@
         "nameservers": {
             "servers": [
                 {
-                    "address": "test1",
-                    "order": "1"
-                },
-                {
-                    "address": "test2",
-                    "order": "2"
+                    "address": null,
+                    "order": null,
+                    "vrf": null
                 }
             ]
         }

@@ -17,6 +17,7 @@ all:
                 DC1_LEAF2:
                   hosts:
                     clab-evpnlab-leaf2:
+                    clab-evpnlab-leaf3:
           vars:
             ansible_connection: httpapi
             ansible_httpapi_use_ssl: true

@@ -1,4 +1,4 @@
 interfaces:
   eth1:
-    ip_address: 10.1.11.12/24
-    description: "Vlan111"
+    ip_address: 10.2.10.12/26
+    description: "Vlan210"
