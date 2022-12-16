@@ -84,8 +84,11 @@ vagrantinstall: cmd-exists-vagrant
 ## 1️⃣️  (Laptop 👨‍💻) 🔓 login on AWS and launch the AWS instance
 startupaws: awslogin awsvmup
 
-## 2️⃣️  (Inside 🎛 ) ⚙️  setup prerequisites on the AWS instance (should be done only once)
-setupaws: awssetup python-setup ansible-setup awsceosimage images tooling-setup
+## 2️⃣️ -1️⃣ (Inside 🎛 ) ⚙️  setup package and python prerequisites on the AWS instance (should be done only once)
+aws-install: aws-required python-setup
+
+## 2️⃣️ -2️⃣ (Inside 🎛 ) ⚙️  setup Ansible and image prerequisites on the AWS instance (should be done only once)
+setupaws: ansible-setup awsceosimage images tooling-setup
 
 ## 3️⃣️  (Inside 🎛 ) ▶️  launch lab on the AWS instance
 spinaws: labup 
@@ -132,9 +135,8 @@ connectlocal:
 
 ## -- AWS Setup --
 
-
 ## Setup the packages needed on the AWS VM
-awssetup: 
+aws-required: 
 	# Docker install
 	sudo amazon-linux-extras install -y docker
 	sudo service docker start
@@ -165,15 +167,15 @@ else
 	~/.pyenv/bin/pyenv install 3.11.1  
 	~/.pyenv/bin/pyenv global 3.11 
 	sudo update-alternatives --install /usr/bin/python3 python3 ~/.pyenv/shims/python3.11 1
-	echo 'export PATH="~/.pyenv/bin:$$PATH"' >> ~/.bashrc
-	echo 'export PYENV_ROOT="~/.pyenv"' >> ~/.bash_profile
 	echo 'export PATH="~/.pyenv/bin:$$PATH"' >> ~/.bash_profile
-	echo 'eval "$(pyenv init -)"' >> ~/.bashrc
+	echo 'eval "$$(pyenv init --path)"' >> ~/.bash_profile
+	echo 'export PATH="~/.pyenv/bin:$$PATH"' >> ~/.bashrc
+	echo 'eval "$$(pyenv init --path)"' >> ~/.bashrc
 	. ~/.bash_profile
 	. ~/.bashrc
-	exec "/bin/bash"
+	#exec "/bin/bash"
 endif
-	
+
 zsh:
 	zsh
 
