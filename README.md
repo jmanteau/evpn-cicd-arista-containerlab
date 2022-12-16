@@ -42,6 +42,14 @@ make vagrantinstall
 make startuplocal
 ```
 
+### AWS Instance direct install
+
+
+```
+sudo yum install -y git
+git clone https://github.com/jmanteau/evpn-cicd-arista-containerlab.git
+```
+
 ### Using it
 You just have to follow the help:
 
