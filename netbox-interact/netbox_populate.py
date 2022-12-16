@@ -1458,6 +1458,7 @@ def provision_overlay() -> None:
                     if y['id'] == vlan_id:
                         return x.id
 
+    _leafs=list(operator.attrgetter('dcim.devices')(nb).filter(**dict(role='leaf')))
     # update rd for vrfs
     vrfs_list = [x for x in list(operator.attrgetter('ipam.vrfs')(nb).all()) if x.rd]
     for vrf in vrfs_list:
@@ -1469,7 +1470,7 @@ def provision_overlay() -> None:
             vrf.update(dict(rd=rd))
     # get evpn configurations
     data = list()
-    for device in leafs:
+    for device in _leafs:
         vxlan1 = operator.attrgetter('dcim.interfaces')(nb).get(**dict(name='Vxlan1', device=str(device)))
         evpn_l2 = [operator.attrgetter('ipam.vlans')(nb).get(**dict(id=x['id']))
                    for x in vxlan1.custom_fields['evpn_l2vpn']]
@@ -1557,7 +1558,9 @@ def provision_overlay() -> None:
 
 def provision_bgp_policies() -> None:
     prefix_dict={}
-    for device in leafs+spines:
+    _leafs=list(operator.attrgetter('dcim.devices')(nb).filter(**dict(role='leaf')))
+    _spines=list(operator.attrgetter('dcim.devices')(nb).filter(**dict(role='spine')))
+    for device in _leafs+_spines:
         ip_addr_lo0,ip_addr_lo1=[operator.attrgetter('ipam.ip-addresses')(nb).get(**dict(device=str(device),
                                                                                         interface='Loopback0')),
         operator.attrgetter('ipam.ip-addresses')(nb).get(**dict(device=str(device),
@@ -1597,24 +1600,24 @@ def provision_all():
     provision_devices()
 
     provision_rir_aggregates()
-    #
-    # provision_asns()
-    #
-    # provision_networks()
-    #
-    # provision_management()
-    #
-    # provision_interfaces()
-    #
-    # provision_vlanintf()
-    #
-    # provision_assign_vlans()
-    #
-    # provision_hosts()
-    #
-    # provision_mlag()
-    #
-    # provision_bgp()
+
+    provision_asns()
+
+    provision_networks()
+
+    provision_management()
+
+    provision_interfaces()
+
+    provision_vlanintf()
+
+    provision_assign_vlans()
+
+    provision_hosts()
+
+    provision_mlag()
+
+    provision_bgp()
 
     provision_overlay()
 
