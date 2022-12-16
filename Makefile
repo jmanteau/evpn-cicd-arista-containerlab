@@ -85,7 +85,7 @@ vagrantinstall: cmd-exists-vagrant
 startupaws: awslogin awsvmup
 
 ## 2️⃣️  (Inside 🎛 ) ⚙️  setup prerequisites on the AWS instance (should be done only once)
-setupaws: awssetup ansible-setup awsceosimage images  
+setupaws: awssetup ansible-setup awsceosimage images tooling-setup
 
 ## 3️⃣️  (Inside 🎛 ) ▶️  launch lab on the AWS instance
 spinaws: labup 
@@ -110,7 +110,7 @@ startuplocal: cmd-exists-vagrant
 	vagrant ssh localvm
 
 ## 2️⃣️  (Inside 🎛 ) ⚙️  setup prerequisites on the local VM (should be done only once)
-setuplocal: ansible-setup localceosimage images
+setuplocal: ansible-setup localceosimage images tooling-setup
 
 ## 3️⃣️  (Inside 🎛 ) ▶️  launch lab on the local VM
 spinlocal: tinylabup 
@@ -156,9 +156,9 @@ awssetup:
 	#echo 'source ~/powerlevel10k/powerlevel10k.zsh-theme' >> ~/.zshrc
 	#echo 'POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD=true' >> ~/.zshrc 
 	# Ansible
-	sudo amazon-linux-extras enable python3.8
-	sudo yum install -y python3.8
-	python3.8 -m ensurepip --upgrade
+	curl https://pyenv.run | bash
+	~/.pyenv/bin/pyenv install 3.11.1
+	sudo update-alternatives --install /usr/bin/python3 python3 ~/.pyenv/shims/python3.11 1
 
 zsh:
 	zsh
@@ -269,6 +269,9 @@ ansible-nethost: guard-LAB
 ## Tooling setup
 tooling-setup:
 	cd netbox-interact && pip3 install -r requirements.txt
+	# Bugfix while https://github.com/netbox-community/pynetbox/issues/457 and https://github.com/netbox-community/pynetbox/issues/497 not fixed
+	wget -q https://raw.githubusercontent.com/Kani999/pynetbox/0b4f33cd2935356821a220e98f0fc7559b3f4262/pynetbox/core/response.py -O ~/.pyenv/versions/3.11.1/lib/python3.11/site-packages/pynetbox/core/response.py
+	#wget -q https://raw.githubusercontent.com/netbox-community/pynetbox/75ab3ae2b251605e215dd549c2beacca74baa956/pynetbox/core/response.py -O ~/.pyenv/versions/3.11.1/lib/python3.11/site-packages/pynetbox/core/response.py
 
 ## Start Netbox / Gitea / Woodpecker
 tooling-start: netbox-start gitea-start woodpecker-start
@@ -301,7 +304,9 @@ netbox-provision:
 	cd netbox-interact && python3 netbox_populate.py
 
 ## Reset Netbox Database
-netbox-dbreset:
+netbox-dbreset: netbox-dbreset-raw netbox-start
+
+netbox-dbreset-raw:
 	cd netbox-docker && docker-compose stop
 	cd netbox-docker && docker-compose rm --stop --force -v postgres
 	cd netbox-docker && docker volume rm netbox-docker_netbox-postgres-data
