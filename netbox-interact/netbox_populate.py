@@ -392,7 +392,6 @@ def provision_customfields() -> None:
 
 def provision_asns() -> None:
     def assign_peer_device_asn(grp: list, asn: object) -> None:
-        # print (f'{asn}, {grp}')
         for device in grp:
             if device.custom_fields.get("evpn_ASN") is None:
                 device.custom_fields.update(dict(evpn_asn=asn.id))
@@ -400,6 +399,23 @@ def provision_asns() -> None:
         site_asn_list=device.site.asns
         site_asn_list.append(asn.id)
         device.site.update(dict(asns=site_asn_list))
+
+    def assign_standalone_device_asn(device: object, site_asnloc: dict) -> None:
+        asn_site = site_asnloc[device.site.id]['asn']
+        asn_device = f'{asn_site}.{device.id}'
+        asndot = convertasdtoplain(asn_device)
+        asn = (tmp
+               if (tmp := operator.attrgetter('ipam.asns')(nb).get(**dict(asn=asndot))) is not None
+               else operator.attrgetter("ipam.asns")(nb).create(**dict(asn=asndot, rir=rir.id))
+               )
+        if device.site.asns.__len__() > 0:
+            asn_site_list = [x.id for x in device.site.asns]
+            asn_site_list.append(asn.id)
+        else:
+            asn_site_list = [asn.id]
+        device.site.update(dict(asns=asn_site_list))
+        device.custom_fields.update(dict(evpn_asn=asn.id))
+        device.save()
 
     def is_mlag():
         evpnlab = invok_evpnlab()
@@ -424,34 +440,41 @@ def provision_asns() -> None:
                 endpoints.append(west)
             wanted = [mdict for n, mdict in enumerate(x_wanted) if mdict not in x_wanted[n + 1:]]
         return wanted
+
     def convertasdtoplain(asn: str):
-        data=re.search(r"\d+", asn).group()
-        x,y=data.split('.')
+        x,y=asn.split('.')
         plaintext=(int(x)*65536)+int(y)
         return plaintext
+
+    def id_site():
+        siterange = [*range(65001, 65199)]
+        x_site = [x.id for x in list(operator.attrgetter('dcim.sites')(nb).all())]
+        data={}
+        for x in x_site:
+            asn=siterange.pop(0)
+            data[x]={'asn':asn}
+        return data
+
     #### ASN Creation and assignment ###
-    leafrange = [*range(65101, 65199)]
-    spinerange = [*range(65001, 65099)]
-    numb=[*range(1,11)]
+
+    site_asnloc=id_site()
+
+    #site_asnloc dict(id_site=dict(asn= int in range (65001,65199)
     mlag = is_mlag()
     rir = operator.attrgetter("ipam.rirs")(nb).get(**dict(name='private-subnets'))
-    for device in leafs:
+    _leafs=list(operator.attrgetter('dcim.devices')(nb).filter(**dict(role='leaf')))
+    _spines=list(operator.attrgetter('dcim.devices')(nb).filter(**dict(role='spine')))
+    for device in _spines:
         if device.custom_fields.get("evpn_asn"):
-            asn = device.custom_fields.get("evpn_asn")['asn']
-            if asn in leafrange:
-                leafrange.remove(asn)
-
-    for device in spines:
-        if device.custom_fields.get("evpn_asn"):
-            asn = device.custom_fields.get("evpn_asn")['asn']
-            if asn in spinerange:
-                spinerange.remove(asn)
+            continue
+        assign_standalone_device_asn(device,site_asnloc)
     if mlag:
         for peer in mlag:
             mlag_peer = list()
             xsearch = list()
-            for device in leafs:
+            for device in _leafs:
                 if str(device) not in peer['endpoints']:
+                    assign_standalone_device_asn(device,site_asnloc)
                     pass
                 else:
                     mlag_peer.append(device)
@@ -461,38 +484,18 @@ def provision_asns() -> None:
                 else:
                     xsearch.append(False)
             if not all(xsearch):
-                leaf_asn = leafrange.pop(0)
-                operator.attrgetter('ipam.asns')(nb).create(dict(asn=leaf_asn, rir=rir.id))
-                asn = operator.attrgetter("ipam.asns")(nb).get(**dict(asn=leaf_asn))
+                asn_site = site_asnloc[xdevice.site.id]['asn']
+                asn_device = f'{asn_site}.{xdevice.id}'
+                asndot = convertasdtoplain(asn_device)
+                operator.attrgetter('ipam.asns')(nb).create(dict(asn=asndot, rir=rir.id))
+                asn = (tmp
+                       if (tmp := operator.attrgetter('ipam.asns')(nb).get(**dict(asn=asndot))) is not None
+                       else operator.attrgetter("ipam.asns")(nb).create(**dict(asn=asndot, rir=rir.id))
+                       )
                 assign_peer_device_asn(mlag_peer, asn)
-    for device in leafs:
-        if not device.custom_fields.get("evpn_asn"):
-            xasn = leafrange.pop(0)
-            operator.attrgetter('ipam.asns')(nb).create(dict(asn=xasn, rir=rir.id))
-            asn = operator.attrgetter("ipam.asns")(nb).get(**dict(asn=xasn))
-            device.custom_fields.update(dict(evpn_asn=asn.id))
-            device.save()
-            site_asn_list = device.site.asns
-            site_asn_list.append(asn.id)
-            device.site.update(dict(asns=site_asn_list))
-    ##### merge spine per site for apply the same asn ####
-    spine_grp = list()
-    for device in spines:
-        if not device.custom_fields['evpn_asn']:
-            site = str(device.site)
-            spine_grp.append(list(filter(lambda x: str(x.site) == site, spines)))
-    import itertools
-    spine_grp = [spine_grp for spine_grp, _ in itertools.groupby(spine_grp)]
-    if spine_grp:
-        for grp in spine_grp:
-            spine_asn = spinerange.pop(0)
-            operator.attrgetter('ipam.asns')(nb).create(dict(asn=spine_asn, rir=rir.id))
-            asn = operator.attrgetter("ipam.asns")(nb).get(**dict(asn=spine_asn))
-
-            assign_peer_device_asn(grp, asn)
-
-    #### END OF ASN Creation and assignment ###
-
+    else:
+        for device in _leafs:
+            assign_standalone_device_asn(device,site_asnloc)
 
 def provision_interfaces() -> None:
     def get_interface_data(raw_device_name, raw_intf_name):
@@ -697,19 +700,6 @@ def provision_networks() -> None:
             scope_type="dcim.site",
             scope_id=site_palette.id,
         )
-    # # Create Tags
-    # even_network = get_or_create(
-    #     nb.extras.tags, name="evpn:even_network", slug="evpn-even_network"
-    # )
-    # odd_network = get_or_create(
-    #     nb.extras.tags, name="evpn:odd_network", slug="evpn-odd_network"
-    # )
-    # onehundred = get_or_create(
-    #     nb.extras.tags, name="evpn:onehundred", slug="evpn-onehundred"
-    # )
-    # twohundred = get_or_create(
-    #     nb.extras.tags, name="evpn:twohundred", slug="evpn-twohundred"
-    # )
 
     # Create VLAN (add vni) / Assign tags to vlan
     for data in networks_list:
@@ -788,18 +778,19 @@ def provision_vlanintf() -> None:
                     ) is not None
                 else operator.attrgetter('dcim.interfaces')(nb).create(intvlan)
             )
-            intf_id = operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=node, name=vid)).id
-            ipaddress = dict(address=str(prefixe[0]), assigned_object_type='dcim.interface',
-                             assigned_object_id=intf_id, tenant=tenant_rainbow.id)
-            if 'vrf' in intvlan:
-                ipaddress['vrf'] = intvlan['vrf']
-            nb_int = (
-                tmp
-                if (tmp := operator.attrgetter('ipam.ip-addresses')(nb).get(**dict(address=str(prefixe[0]),
-                                                                                   interface_id=str(intf_id)))
-                    ) is not None
-                else operator.attrgetter('ipam.ip-addresses')(nb).create(ipaddress)
-            )
+            intf = operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=node, name=vid))
+            if intf.count_ipaddresses==0:
+                ipaddress = dict(address=str(prefixe[0]), assigned_object_type='dcim.interface',
+                                 assigned_object_id=intf.id, tenant=tenant_rainbow.id)
+                if 'vrf' in intvlan:
+                    ipaddress['vrf'] = intvlan['vrf']
+                nb_int = (
+                    tmp
+                    if (tmp := operator.attrgetter('ipam.ip-addresses')(nb).get(**dict(address=str(prefixe[0]),
+                                                                                       interface_id=str(intf.id)))
+                        ) is not None
+                    else operator.attrgetter('ipam.ip-addresses')(nb).create(ipaddress)
+                )
 
 
 def provision_bgp() -> None:
@@ -820,7 +811,7 @@ def provision_bgp() -> None:
             device=operator.attrgetter('dcim.devices')(nb).get(**dict(name=data['device'])).id,
             local_as=operator.attrgetter('dcim.devices')(nb).get(**dict(name=data['device'])).custom_fields['evpn_asn']
             ['id'],
-            remote_as=operator.attrgetter('ipam.asns')(nb).get(**dict(asn=data['params']['p2p_remote_asn'])).id,
+            remote_as=data['params']['p2p_remote_asn'],
             local_address=operator.attrgetter('ipam.ip-addresses')(nb).get(**dict(
                 interface=data['params']['p2p_int_local'], device=data['device'])).id,
             remote_address=operator.attrgetter('ipam.ip-addresses')(nb).get(**dict(
@@ -894,7 +885,9 @@ def provision_bgp() -> None:
             from arista_encrypt import cbc_encrypt
             encrypted = cbc_encrypt(bytes(group_peer, 'utf-8'), bytes(password, 'utf-8'))
             return encrypted
-
+        def get_asn(asn: str):
+            display=re.search(r"\d+\.\d", asn).group().split()[0]
+            return display
         bgp_tables = list()
         local_ctx = {}
         attr_nb = "ipam.ip-addresses"
@@ -918,7 +911,8 @@ def provision_bgp() -> None:
                 if rem_role_device != 'server':
                     intf_neighbor = str(intf.connected_endpoints[0])
                     rem_device = str(intf.connected_endpoints[0].device)
-                    asn_neighbor = intf.connected_endpoints[0].device.custom_fields.get("evpn_asn")['asn']
+                    # asn=intf.connected_endpoints[0].device.custom_fields["evpn_asn"]['display']
+                    asn_neighbor = intf.connected_endpoints[0].device.custom_fields["evpn_asn"]['id']
                     peer_neighbor = operator.attrgetter(attr_nb)(nb).get(**{"device": rem_device,
                                                                             "interface": intf_neighbor
                                                                             }
@@ -947,7 +941,8 @@ def provision_bgp() -> None:
                 # rem_device_ip = intf.count_ipaddresses == 1
                 if not all([local_device_role,rem_device_role]):
                     rem_device = str(intf.connected_endpoints[0].device)
-                    asn_neighbor = intf.connected_endpoints[0].device.custom_fields.get("evpn_asn")['asn']
+                    # asn=intf.connected_endpoints[0].device.custom_fields['evpn_asn']['display']
+                    asn_neighbor = intf.connected_endpoints[0].device.custom_fields['evpn_asn']['id']
                     peer_neighbor = operator.attrgetter(attr_nb)(nb).get(**{"device": rem_device,
                                                                             "interface": "Loopback0"}
                                                                          )
@@ -984,7 +979,8 @@ def provision_bgp() -> None:
                                          if
                                          'mlag-ibgp' in [str(x) for x in x.tagged_vlans] and x.count_ipaddresses == 1][
                             0]
-                        asn_neighbor = rem_device.custom_fields.get("evpn_asn")['asn']
+                        # asn=rem_device.custom_fields['evpn_asn']['display']
+                        asn_neighbor = rem_device.custom_fields['evpn_asn']['id']
                         peer_neighbor = operator.attrgetter(attr_nb)(nb).get(**{"device": str(rem_device),
                                                                                 "interface": str(intf_neighbor)
                                                                                 }
@@ -1321,42 +1317,6 @@ def provision_mlag() -> None:
                              peer_mlag and x.connected_endpoints and str(
                                  x.connected_endpoints[0].device.device_role) == 'leaf'
                              ]
-                # for intf in peer_intf:
-                #     is_lag_member=(
-                #         tmp
-                #         if(tmp:=intf.lag) is not None
-                #         else None
-                #     )
-                #     is_lag_remote_member=(
-                #         tmp
-                #         if(tmp:=intf.connected_endpoints[0].lag) is not None
-                #         else None
-                #     )
-                #     if is_lag_member and is_lag_remote_member:
-                #         new_cable = (
-                #             tmp
-                #             if (
-                #                    tmp := operator.attrgetter('dcim.cables')(nb).get(**dict(
-                #                        termination_a_id=is_lag_member.id,
-                #                        termination_b_id=is_lag_remote_member.id,
-                #                    )
-                #                                                                      )
-                #                )
-                #                is not None
-                #             else operator.attrgetter('dcim.cables')(nb).create(
-                #                 dict(a_terminations=[
-                #                     {
-                #                         'object_type': 'dcim.interface',
-                #                         'object_id': is_lag_member.id
-                #                     }
-                #                 ], b_terminations=[
-                #                     {
-                #                         'object_type': 'dcim.interface',
-                #                         'object_id': is_lag_remote_member.id
-                #                     }
-                #                 ])
-                #             )
-                #         )
                 if subnet:
                     for data in peer_intf:
                         devices = list()
@@ -1388,6 +1348,7 @@ def provision_assign_vlans() -> None:
         vlandatabase = operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=str(device), name='VLAN_DATABASE'))
         if not vlandatabase.tagged_vlans == vlans:
             vlandatabase.update(dict(mode='tagged', tagged_vlans=vid_list))
+            vlandatabase.save()
         vxlan1 = operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=str(device), name='Vxlan1'))
         param = list(filter(lambda x: x['evpn'] == True, ipams[str(device)]))
         l2vpn_id = [operator.attrgetter('ipam.vlans')(nb).get(**dict(vid=x['vlan']['id'], group=str(device))).id
@@ -1401,6 +1362,7 @@ def provision_assign_vlans() -> None:
                                           'evpn_l3vpn': l3vpn_id}
                            )
                       )
+        vxlan1.save()
         interfaces_list = list(filter(lambda x: x['vlan']['interfaces'], ipams[str(device)]))
         taggedvlans_params = [dict(vid=x['vlan']['id'], interfaces=x['vlan']['interfaces']) for x in interfaces_list]
         for data in taggedvlans_params:
@@ -1409,6 +1371,7 @@ def provision_assign_vlans() -> None:
                 interface = operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=str(device), name=intf))
                 if interface:
                     interface.update(dict(mode='tagged', tagged_vlans=[vid_id]))
+                    interface.save()
 
 
 def provision_hosts() -> None:
@@ -1469,6 +1432,7 @@ def provision_overlay() -> None:
         rd = f'{lo0}:{evpn_vni}'
         if vrf.rd != rd:
             vrf.update(dict(rd=rd))
+            vrf.save()
     # get evpn configurations
     data = list()
     for device in _leafs:
