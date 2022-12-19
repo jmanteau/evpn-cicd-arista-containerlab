@@ -1556,35 +1556,35 @@ def provision_bgp_policies() -> None:
 
 
 def provision_all():
-    provision_customfields()
-
-    provision_orga()
-
-    provision_config_context()
-
-    provision_devices()
-
-    provision_rir_aggregates()
-
-    provision_asns()
-
-    provision_networks()
-
-    provision_management()
-
-    provision_interfaces()
-
-    provision_vlanintf()
-
-    provision_assign_vlans()
-
-    provision_hosts()
-
-    provision_mlag()
-
-    provision_bgp()
-
-    provision_overlay()
+    # provision_customfields()
+    #
+    # provision_orga()
+    #
+    # provision_config_context()
+    #
+    # provision_devices()
+    #
+    # provision_rir_aggregates()
+    #
+    # provision_asns()
+    #
+    # provision_networks()
+    #
+    # provision_management()
+    #
+    # provision_interfaces()
+    #
+    # provision_vlanintf()
+    #
+    # provision_assign_vlans()
+    #
+    # provision_hosts()
+    #
+    # provision_mlag()
+    #
+    # provision_bgp()
+    #
+    # provision_overlay()
 
     provision_bgp_policies()
 

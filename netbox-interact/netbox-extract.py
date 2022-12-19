@@ -101,9 +101,10 @@ def build_peer_neighbors(param: str):
     for k in respond:
         sub_ctx[str(k.remote_address).split('/')[0]]={
             'peer_group': str(k.peer_group),
-            'remote_as': str(k.remote_as).split('AS')[-1],
+            'remote_as':build_bgp_as((str(k.remote_as))),
             'description':f"{str(k.custom_fields['BGP_remote_device']['name'])}_{str(k.remote_address.assigned_object)}",
-            'next_hop_self':k.custom_fields['BGP_next_hop_self']
+            'next_hop_self':k.custom_fields['BGP_next_hop_self'],
+            'next_hop_unchanged': k.custom_fields['BGP_next_hop_unchanged']
         }
     return sub_ctx
 
@@ -519,8 +520,15 @@ def build_mlag_conf(device: object):
         sub_ctx['reload_delay_non_mlag'] = 300
         return sub_ctx
 
-nb = get_netbox()
+def build_bgp_as(asn :str):
+    display = re.search(r"\d+\.\d", asn).group().split()[0]
+    return display
 
+def build_bgp_router_id(device: object):
+    respond=str(get_object(nb, 'ipam.ip-addresses',dict(device=str(device),interface='Loopback0'))).split('/')[0]
+    return respond
+
+nb = get_netbox()
 
 def ddict():
     return defaultdict(ddict)
@@ -537,14 +545,12 @@ def ddict2dict(d):
 ''' Get all devices object from netbox where device_role is not server value '''
 devices_list = list(operator.attrgetter('dcim.devices')(nb).filter(**dict(role='leaf'))) + list(
     operator.attrgetter('dcim.devices')(nb).filter(**dict(role='spine')))
-# devices_list = [operator.attrgetter('dcim.devices')(nb).get(**dict(name='leaf2'))]
+# devices_list = [operator.attrgetter('dcim.devices')(nb).get(**dict(name='spine1'))]
 for device in devices_list:
     structured_config = ddict()
     role=str(device.device_role)
-    structured_config["router_bgp"]['as'] = re.search(r"\d+", device.custom_fields['evpn_asn']['display']).group()
-    structured_config["router_bgp"]['router_id'] = str(get_object(nb, 'ipam.ip-addresses',
-                                                              dict(device=str(device),
-                                                                   interface='Loopback0'))).split('/')[0]
+    structured_config["router_bgp"]['as'] = build_bgp_as(device.custom_fields['evpn_asn']['display'])
+    structured_config["router_bgp"]['router_id'] = build_bgp_router_id(device)
     structured_config["router_bgp"]['address_family_evpn']['peer_groups'] = build_address_family_evpn(str(device))
     structured_config["router_bgp"]['bgp_defaults'] = ["no bgp default ipv4-unicast",
                                                        "distance bgp 20 200 200",
