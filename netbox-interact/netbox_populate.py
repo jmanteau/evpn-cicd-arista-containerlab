@@ -888,6 +888,7 @@ def provision_bgp() -> None:
         def get_asn(asn: str):
             display=re.search(r"\d+\.\d", asn).group().split()[0]
             return display
+
         bgp_tables = list()
         local_ctx = {}
         attr_nb = "ipam.ip-addresses"
@@ -1080,6 +1081,10 @@ def provision_bgp() -> None:
         if not operator.attrgetter('plugins.bgp.bgppeergroup')(nb).get(**dict(name='evpn-overlay-peers')):
             operator.attrgetter('plugins.bgp.bgppeergroup')(nb).create(dict(name='evpn-overlay-peers',
                                                                             description='evpn-overlay-peers'))
+
+        if not operator.attrgetter('plugins.bgp.bgppeergroup')(nb).get(**dict(name='ipv4-mlag-peering')):
+            operator.attrgetter('plugins.bgp.bgppeergroup')(nb).create(dict(name='ipv4-mlag-peering',
+                                                                            description='ipv4-mlag-peering'))
 
         for data in bgp_params[0]:
             create_session(data)
@@ -1556,35 +1561,35 @@ def provision_bgp_policies() -> None:
 
 
 def provision_all():
-    # provision_customfields()
-    #
-    # provision_orga()
-    #
-    # provision_config_context()
-    #
-    # provision_devices()
-    #
-    # provision_rir_aggregates()
-    #
-    # provision_asns()
-    #
-    # provision_networks()
-    #
-    # provision_management()
-    #
-    # provision_interfaces()
-    #
-    # provision_vlanintf()
-    #
-    # provision_assign_vlans()
-    #
-    # provision_hosts()
-    #
-    # provision_mlag()
-    #
-    # provision_bgp()
-    #
-    # provision_overlay()
+    provision_customfields()
+
+    provision_orga()
+
+    provision_config_context()
+
+    provision_devices()
+
+    provision_rir_aggregates()
+
+    provision_asns()
+
+    provision_networks()
+
+    provision_management()
+
+    provision_interfaces()
+
+    provision_vlanintf()
+
+    provision_assign_vlans()
+
+    provision_hosts()
+
+    provision_mlag()
+
+    provision_bgp()
+
+    provision_overlay()
 
     provision_bgp_policies()
 

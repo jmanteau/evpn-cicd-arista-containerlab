@@ -82,6 +82,18 @@ def build_peer_group(param: str):
                                    send_community="all",
                                    maximum_routes=0
                                    )
+            if k.custom_fields['BGP_next_hop_unchanged'] is True:
+                sub_ctx[str(k)]['next_hop_unchanged']=True
+        elif str(k)=='ipv4-mlag-peering':
+            password = list(filter(lambda x: str(k) in x,
+                                   k.device.local_context_data['local-routing']['bgp']))[0][str(k)][0]['password']
+            sub_ctx[str(k)] = dict(type=k.custom_field_data.BGP_address_family.lower(),
+                                   password=password,
+                                   maximum_routes=12000,
+                                   send_community="all",
+                                   )
+            if k.custom_fields['BGP_next_hop_self'] is True:
+                sub_ctx[str(k)]['BGP_next_hop_self']=True
     return sub_ctx
 
 
@@ -102,9 +114,7 @@ def build_peer_neighbors(param: str):
         sub_ctx[str(k.remote_address).split('/')[0]]={
             'peer_group': str(k.peer_group),
             'remote_as':build_bgp_as((str(k.remote_as))),
-            'description':f"{str(k.custom_fields['BGP_remote_device']['name'])}_{str(k.remote_address.assigned_object)}",
-            'next_hop_self':k.custom_fields['BGP_next_hop_self'],
-            'next_hop_unchanged': k.custom_fields['BGP_next_hop_unchanged']
+            'description':f"{str(k.custom_fields['BGP_remote_device']['name'])}_{str(k.remote_address.assigned_object)}"
         }
     return sub_ctx
 
@@ -543,9 +553,9 @@ def ddict2dict(d):
 
 
 ''' Get all devices object from netbox where device_role is not server value '''
-devices_list = list(operator.attrgetter('dcim.devices')(nb).filter(**dict(role='leaf'))) + list(
-    operator.attrgetter('dcim.devices')(nb).filter(**dict(role='spine')))
-# devices_list = [operator.attrgetter('dcim.devices')(nb).get(**dict(name='spine1'))]
+# devices_list = list(operator.attrgetter('dcim.devices')(nb).filter(**dict(role='leaf'))) + list(
+#     operator.attrgetter('dcim.devices')(nb).filter(**dict(role='spine')))
+devices_list = [operator.attrgetter('dcim.devices')(nb).get(**dict(name='leaf2'))]
 for device in devices_list:
     structured_config = ddict()
     role=str(device.device_role)
@@ -556,7 +566,8 @@ for device in devices_list:
                                                        "distance bgp 20 200 200",
                                                        "graceful-restart restart-time 300",
                                                        "graceful-restart",
-                                                       "maximum-paths 4 ecmp 4"
+                                                       "maximum-paths 4 ecmp 4",
+                                                       "bgp asn notation asdot"
                                                        ]
     structured_config["router_bgp"]['peer_groups'] = build_peer_group(str(device))
     structured_config["router_bgp"]['address_family_ipv4']['peer_groups'] = build_address_family_ipv4(str(device))
