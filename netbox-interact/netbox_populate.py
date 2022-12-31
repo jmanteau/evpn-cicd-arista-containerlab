@@ -994,7 +994,7 @@ def provision_bgp() -> None:
                                                                                   'p2p_remote_asn': asn_neighbor,
                                                                                   'next_hop_self': True
                                                                                   },
-                                                   group_peer='ipv4-underlay-peers'
+                                                   group_peer='ipv4-mlag-peering'
                                                    )
                                               )
         return bgp_tables, local_ctx
@@ -1090,11 +1090,12 @@ def provision_bgp() -> None:
             create_session(data)
     # ###endpoint is missing, wait updates from repo
     # operator.attrgetter('plugins.bgp.prefix-list')(nb).create(dict(name='pl-loopbacks-evpn-overlay2',
-    #                                                                description='pl-loopbacks-evpn-overlay', family_id="")
+    #                                                                description='pl-loopbacks-evpn-overlay',
+    #                                                                family_id="")
     #                                                           )
     #
     # operator.attrgetter('plugins.bgp.routing-policy')(nb).create(dict(name='rm-conn-2-bgp', description='rm-conn-2-bgp')
-    #                                                             )
+    #                                                              )
 
 
 def provision_rir_aggregates() -> None:
@@ -1527,30 +1528,51 @@ def provision_overlay() -> None:
 
 
 def provision_bgp_policies() -> None:
-    prefix_dict={}
+    def get_index():
+        return [*range(10,200,10)]
+
+    # prefix_dict={}
     _leafs=list(operator.attrgetter('dcim.devices')(nb).filter(**dict(role='leaf')))
     _spines=list(operator.attrgetter('dcim.devices')(nb).filter(**dict(role='spine')))
     for device in _leafs+_spines:
-        ip_addr_lo0,ip_addr_lo1=[operator.attrgetter('ipam.ip-addresses')(nb).get(**dict(device=str(device),
-                                                                                        interface='Loopback0')),
-        operator.attrgetter('ipam.ip-addresses')(nb).get(**dict(device=str(device),
-                                                                interface='Loopback1'))]
-        prefix_dict['pl-loopback-evpn-overlay']={'10':{'action':'permit',
-                                                       'statements':f'{str(ip_addr_lo0)} eq 32'},
-                                                 '20':{'action':'permit',
-                                                       'statements':f'{str(ip_addr_lo1)} eq 32'}
-                                                 }
+        # ip_addr_lo0,ip_addr_lo1=[operator.attrgetter('ipam.ip-addresses')(nb).get(**dict(device=str(device),
+        #                                                                                 interface='Loopback0')),
+        # operator.attrgetter('ipam.ip-addresses')(nb).get(**dict(device=str(device),
+        #                                                         interface='Loopback1'))]
+        # prefix_dict['pl-loopback-evpn-overlay']=dict()
+        # index=get_index()
+        #
+        # if ip_addr_lo0:
+        #     prefix_dict['pl-loopback-evpn-overlay'][f'{index.pop(0)}']={'action':'permit',
+        #                                                                 'statements':f'{str(ip_addr_lo0)} eq 32'}
+        # if ip_addr_lo1:
+        #     prefix_dict['pl-loopback-evpn-overlay'][f'{index.pop(0)}']={'action':'permit',
+        #                                                                 'statements':f'{str(ip_addr_lo1)} eq 32'}
+
         local_ctx=device.local_context_data
         local_ctx['routing-policies']={'route-maps':{}}
-
-        local_ctx['routing-policies']['route-maps']['rm-conn-2-bgp']={'10':{'action':'permit',
-                                                                            'clause':'match',
-                                                                            'prefix_lists':[prefix_dict]
-                                                                            },
-                                                                      'redistribute':'connected',
-                                                                      }
+        index=get_index()
+        # local_ctx['routing-policies']['route-maps']['rm-conn-2-bgp']={f'{index.pop(0)}':{'action':'permit',
+        #                                                                     'clause':'match',
+        #                                                                     'prefix_lists':[prefix_dict]
+        #                                                                     },
+        #                                                               'redistribute':'connected',
+        #                                                               }
+        # parameters=all('parameters' in x for x in local_ctx['local-routing']['bgp'])
+        for x in local_ctx['local-routing']['bgp']: parameters=True if 'parameters' in x else False
+        if parameters is True:
+            data=[dic for dic in local_ctx['local-routing']['bgp'] if 'parameters' in dic][0]
+            connected=data['parameters']['redistribute']=='connected'
+            if connected is False:
+                idx=local_ctx['local-routing']['bgp'].index(data)
+                local_ctx['local-routing']['bgp'][idx]['parameters'].update(dict(redistribute='connected'))
+        else:
+            local_ctx['local-routing']['bgp'].append({'parameters':{'redistribute':'connected'}
+                                               }
+                                                     )
         if device.virtual_chassis:
-            local_ctx['routing-policies']['route-maps']['rm-mlag-peer-in']={'10':{'action':'permit',
+            index=get_index()
+            local_ctx['routing-policies']['route-maps']['rm-mlag-peer-in']={f'{index.pop(0)}':{'action':'permit',
                                                                                   'clause':'set',
                                                                                   'statements':'origin incomplete',
                                                                                   'description':'prefer spines'
@@ -1592,7 +1614,6 @@ def provision_all():
     provision_overlay()
 
     provision_bgp_policies()
-
 
 def get_shell():
     import ipdb

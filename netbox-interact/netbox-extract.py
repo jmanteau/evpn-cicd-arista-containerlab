@@ -85,10 +85,7 @@ def build_peer_group(param: str):
             if k.custom_fields['BGP_next_hop_unchanged'] is True:
                 sub_ctx[str(k)]['next_hop_unchanged']=True
         elif str(k)=='ipv4-mlag-peering':
-            password = list(filter(lambda x: str(k) in x,
-                                   k.device.local_context_data['local-routing']['bgp']))[0][str(k)][0]['password']
             sub_ctx[str(k)] = dict(type=k.custom_field_data.BGP_address_family.lower(),
-                                   password=password,
                                    maximum_routes=12000,
                                    send_community="all",
                                    )
@@ -101,9 +98,13 @@ def build_address_family_ipv4(param: str):
     sub_ctx = {}
     respond = get_object(nb, 'plugins.bgp.bgpsession', dict(device=param))
     for k in respond:
-        if str(k.peer_group) == 'ipv4-underlay-peers':
+        # if str(k.peer_group) == 'ipv4-underlay-peers':
+        #     sub_ctx[str(k)] = dict(activate=True)
+        # elif str(k.peer_group) == 'evpn-overlay-peers':
+        #     sub_ctx[str(k)] = dict(activate=False)
+        if k.custom_fields['BGP_address_family']=='Ipv4':
             sub_ctx[str(k)] = dict(activate=True)
-        elif str(k.peer_group) == 'evpn-overlay-peers':
+        else:
             sub_ctx[str(k)] = dict(activate=False)
     return sub_ctx
 
@@ -122,8 +123,10 @@ def build_address_family_evpn(param: str):
     sub_ctx = {}
     respond = get_object(nb, 'plugins.bgp.bgpsession', dict(device=param))
     for k in respond:
-        if str(k.peer_group) == 'evpn-overlay-peers':
-            sub_ctx[str(k.peer_group)]={'activate': True}
+        # if str(k.peer_group) == 'evpn-overlay-peers':
+        #     sub_ctx[str(k.peer_group)]={'activate': True}
+        if k.custom_fields['BGP_address_family']=='Evpn':
+            sub_ctx[str(k.peer_group)] = {'activate': True}
     return sub_ctx
 
 def build_static_routes(param: object):
@@ -267,29 +270,41 @@ def build_loopback_interfaces(param: object):
 
 def build_prefix_lists(param: object):
     # TODO https://github.com/k01ek/netbox-bgp/issues/112
-    sub_ctx = {}
-    respond=get_object(nb,'plugins.bgp.prefix-list',dict(name='pl-loopbacks-evpn-overlay'))
-    loopback0_subnet=str(get_object(nb,"ipam.prefixes",dict(role="evpn-loopback")))
-    loopback1_subnet = str(get_object(nb, "ipam.prefixes", dict(role="evpn-vtep")))
-    sub_ctx[str(respond)]=dict(sequence_numbers={
-        '10':{
-            'action': f'permit {loopback0_subnet} eq 32'
-        },
-        '20':{
-            'action': f'permit {loopback1_subnet} eq 32'
-        }
-                                                 }
-    )
+    sub_ctx,prefixes_list=list(),list()
+    for k,v in param.config_context['routing-policies']['route-maps'].items():
+        for seq,data in v.items():
+            if 'prefix_lists' in data:
+                prefixes_list.extend(data['prefix_lists'])
+    for prefix_list in prefixes_list:
+        for k,v in prefix_list.items():
+            sequence = {}
+            for key,values in v.items():
+                action=" ".join(values.values())
+                new_dict={key:{'action':action}}
+                sequence.update(new_dict)
+            sub_ctx.append(dict(name=k,sequence_numbers=sequence))
     return sub_ctx
 
-def build_route_maps(device):
+def build_route_maps(param):
     # TODO https://github.com/k01ek/netbox-bgp/issues/112
     sub_ctx = {}
-    # device_rt=device.custom_fields['BGP_route_map']
-    # respond=str(get_object(nb,'plugins.bgp.routing-policy',dict(name=rt['name']))[0])
-    # prefix_name=str(get_object(nb,'plugins.bgp.prefix-list',dict(name='pl-loopbacks-evpn-overlay')))
-    if device.virtual_chassis:
-        sub_ctx['rm-mlag-peer-in']=dict(sequence_numbers={'10':{'type': 'permit','set':["origin incomplete"]}})
+    #device_rt=device.custom_fields['BGP_route_map']
+    #respond=str(get_object(nb,'plugins.bgp.routing-policy',dict(name=rt['name']))[0])
+    #prefix_name=str(get_object(nb,'plugins.bgp.prefix-list',dict(name='pl-loopbacks-evpn-overlay')))
+    for k, v in param.config_context['routing-policies']['route-maps'].items():
+        data=dict(sequence_numbers={})
+        for key,values in v.items():
+            if key.isdigit():
+                sequence = list()
+                data['sequence_numbers'][key]={}
+                if 'description' in values:
+                    data['sequence_numbers'][key].update(dict(description=values['description']))
+                if 'prefix_lists' in values:
+                    sequence.extend([list(prefix_name.keys()) for prefix_name in values['prefix_lists']][0])
+                else:
+                    sequence.extend([values['statements']])
+                data['sequence_numbers'][key].update({'type':values['action'], values['clause']:sequence})
+                sub_ctx[k]=data
     return sub_ctx
 
 def build_bfd(param: object):
@@ -416,14 +431,14 @@ def build_ip_virtual_router_mac_addr(device: object):
     #if mac:
     return mac
 def build_redistribute_routes(device):
-    sub_ctx={}
+    sub_ctx=[]
     # respond=get_object(nb, 'plugins.bgp.routing-policy', param={})
     # for data in respond:
     #     sub_ctx={data.custom_fields['BGP_redistribute_ipv4']:{'route_map':[]}}
-    respond=device.config_context['routing-policies']
-    for k,v in respond['route-maps'].items():
-        if k =='rm-conn-2-bgp':
-            sub_ctx={v['redistribute']:None}
+    respond=device.config_context['local-routing']['bgp']
+    for k in respond:
+        if 'parameters' in k:
+            sub_ctx.append(k['parameters']['redistribute'])
     return sub_ctx
 
 def build_l2vpns(param: object):
@@ -553,9 +568,9 @@ def ddict2dict(d):
 
 
 ''' Get all devices object from netbox where device_role is not server value '''
-# devices_list = list(operator.attrgetter('dcim.devices')(nb).filter(**dict(role='leaf'))) + list(
-#     operator.attrgetter('dcim.devices')(nb).filter(**dict(role='spine')))
-devices_list = [operator.attrgetter('dcim.devices')(nb).get(**dict(name='leaf2'))]
+devices_list = list(operator.attrgetter('dcim.devices')(nb).filter(**dict(role='leaf'))) + list(
+    operator.attrgetter('dcim.devices')(nb).filter(**dict(role='spine')))
+# devices_list = [operator.attrgetter('dcim.devices')(nb).get(**dict(name='leaf2'))]
 for device in devices_list:
     structured_config = ddict()
     role=str(device.device_role)
@@ -591,8 +606,8 @@ for device in devices_list:
     structured_config["management_api_http"]=build_mgmt_api_http(device)
     structured_config["spanning_tree"] = build_spanning_tree(device)
     structured_config["vrfs"] = build_vrfs_lists(str(device),role)
-    # structured_config["prefix_lists"] = build_prefix_lists(device)
-    # structured_config["route_maps"] = build_route_maps(device)
+    structured_config["prefix_lists"] = build_prefix_lists(device)
+    structured_config["route_maps"] = build_route_maps(device)
     if role=='leaf':
         structured_config["vlan_internal_order"]["allocation"] = "ascending"
         structured_config["vlan_internal_order"]["range"]["beginning"] = 1006
