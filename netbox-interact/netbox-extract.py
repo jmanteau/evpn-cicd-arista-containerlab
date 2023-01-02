@@ -59,10 +59,23 @@ def get_object(nb: object, api_attr: str, param: dict):
         return respond
 
 
-def build_peer_group(param: str):
+def build_peer_group(param: object):
+    def handle_route_maps(session: str,rm: dict):
+        import_policies,export_policies=None,None
+        for k,v in rm.items():
+            for key,values in v.items():
+                if 'session_in' in values:
+                    import_policies=values['session_in'] if values['session_in'] == session else None
+                if 'session_out' in values:
+                    export_policies=values['session_out']if values['session_out'] == session else None
+        return {"in":import_policies,"out":export_policies}
     sub_ctx = {}
-    respond = get_object(nb, 'plugins.bgp.bgpsession', dict(device=param))
+    respond = get_object(nb, 'plugins.bgp.bgpsession', dict(device=str(param)))
     for k in respond:
+        policies=handle_route_maps(str(k),param.config_context['routing-policies']['route-maps'])
+        export_policies,import_policies=policies['out'],policies['in']
+        # export_policies = str(k.export_policies[0]) if k.export_policies else None
+        # import_policies = str(k.import_policies[0]) if k.import_policies else None
         if str(k) == 'ipv4-underlay-peers':
             password = list(filter(lambda x: str(k) in x,
                                    k.device.local_context_data['local-routing']['bgp']))[0][str(k)][0]['password']
@@ -71,6 +84,7 @@ def build_peer_group(param: str):
                                    maximum_routes=12000,
                                    send_community="all",
                                    )
+
         elif str(k) == 'evpn-overlay-peers':
             password = list(filter(lambda x: str(k) in x,
                                    k.device.local_context_data['local-routing']['bgp']))[0][str(k)][0]['password']
@@ -82,15 +96,21 @@ def build_peer_group(param: str):
                                    send_community="all",
                                    maximum_routes=0
                                    )
-            if k.custom_fields['BGP_next_hop_unchanged'] is True:
-                sub_ctx[str(k)]['next_hop_unchanged']=True
+
         elif str(k)=='ipv4-mlag-peering':
             sub_ctx[str(k)] = dict(type=k.custom_field_data.BGP_address_family.lower(),
                                    maximum_routes=12000,
                                    send_community="all",
+                                   remote_as=build_bgp_as(str(k.remote_as))
                                    )
-            if k.custom_fields['BGP_next_hop_self'] is True:
-                sub_ctx[str(k)]['BGP_next_hop_self']=True
+        if k.custom_fields['BGP_next_hop_unchanged'] is True:
+            sub_ctx[str(k)]['next_hop_unchanged'] = True
+        if k.custom_fields['BGP_next_hop_self'] is True:
+            sub_ctx[str(k)]['BGP_next_hop_self']=True
+        if export_policies:
+            sub_ctx[str(k)]['route_map_out'] = export_policies
+        if import_policies:
+            sub_ctx[str(k)]['route_map_in'] = import_policies
     return sub_ctx
 
 
@@ -584,7 +604,7 @@ for device in devices_list:
                                                        "maximum-paths 4 ecmp 4",
                                                        "bgp asn notation asdot"
                                                        ]
-    structured_config["router_bgp"]['peer_groups'] = build_peer_group(str(device))
+    structured_config["router_bgp"]['peer_groups'] = build_peer_group(device)
     structured_config["router_bgp"]['address_family_ipv4']['peer_groups'] = build_address_family_ipv4(str(device))
     structured_config["router_bgp"]['neighbors'] = build_peer_neighbors(str(device))
     structured_config["router_bgp"]['redistribute_routes']= build_redistribute_routes(device)

@@ -74,6 +74,9 @@ def provision_config_context() -> None:
                 roles=[role_leaf.id, role_spine.id],
             )
 
+def check_netbox_bgp_plugins():
+    plugin = list(filter(lambda x: x['package'] == 'netbox_bgp', list(nb.plugins.installed_plugins())))
+    return plugin
 
 def create_devices(evpnlab) -> None:
     evpnlab = invok_evpnlab()
@@ -797,10 +800,6 @@ def provision_bgp() -> None:
     '''https://www.ciscolive.com/c/dam/r/ciscolive/emea/docs/2019/pdf/BRKSPG-2303.pdf'''
     '''https://github.com/openconfig/public/tree/master/release/models/bgp'''
 
-    def check_netbox_bgp_plugins():
-        plugin = list(filter(lambda x: x['package'] == 'netbox_bgp', list(nb.plugins.installed_plugins())))
-        return plugin
-
     def create_session(data: dict) -> None:
         '''
 
@@ -1073,6 +1072,24 @@ def provision_bgp() -> None:
             type="select",
             choices=["attached-host", "bgp", "connected", "dynamic", "isis", "ospf", "ospfv3", "rip", "static"]
         )
+
+        # cf_bgp_routemapin = get_or_create(
+        #     operator.attrgetter('extras.custom-fields')(nb),
+        #     search="name",
+        #     name="BGP_routemapin",
+        #     content_types=["netbox_bgp.bgpsession"],
+        #     type="text",
+        #     label="import route-maps",
+        # )
+        #
+        # cf_bgp_routemapout = get_or_create(
+        #     operator.attrgetter('extras.custom-fields')(nb),
+        #     search="name",
+        #     name="BGP_routemapout",
+        #     content_types=["netbox_bgp.bgpsession"],
+        #     type="text",
+        #     label="export route-maps",
+        # )
 
         if not operator.attrgetter('plugins.bgp.bgppeergroup')(nb).get(**dict(name='ipv4-underlay-peers')):
             operator.attrgetter('plugins.bgp.bgppeergroup')(nb).create(dict(name='ipv4-underlay-peers',
@@ -1528,6 +1545,7 @@ def provision_overlay() -> None:
 
 
 def provision_bgp_policies() -> None:
+    #pending method, create PR to improve netbox_bgp
     def get_index():
         return [*range(10,200,10)]
 
@@ -1575,7 +1593,9 @@ def provision_bgp_policies() -> None:
             local_ctx['routing-policies']['route-maps']['rm-mlag-peer-in']={f'{index.pop(0)}':{'action':'permit',
                                                                                   'clause':'set',
                                                                                   'statements':'origin incomplete',
-                                                                                  'description':'prefer spines'
+                                                                                  'description':'prefer spines',
+                                                                                  'session_in': 'ipv4-mlag-peering',
+                                                                                  'session_out': None
                                                                                   },
                                                                             }
         device.update({'local_context_data':local_ctx})
