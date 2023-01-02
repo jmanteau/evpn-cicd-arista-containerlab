@@ -1299,6 +1299,8 @@ def provision_mlag() -> None:
                     scope_id=site_palette.id,
                 )
                 if vlan:
+                    intpo.tagged_vlans.append(vlan.id)
+                    intpo.save()
                     interfaces = [x for x in peer_mlag if x.count_ipaddresses == 0]
                     if interfaces:
                         for target in interfaces:
@@ -1362,6 +1364,7 @@ def provision_mlag() -> None:
                                 ipaddress = dict(address=str(prefix[0]), assigned_object_type='dcim.interface',
                                                  assigned_object_id=x.id)
                                 operator.attrgetter('ipam.ip-addresses')(nb).create(ipaddress)
+
 
 
 def provision_assign_vlans() -> None:
