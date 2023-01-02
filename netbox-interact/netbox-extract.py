@@ -450,15 +450,17 @@ def build_ip_virtual_router_mac_addr(device: object):
     mac=interface[0].mac_address if interface[0].mac_address else None
     #if mac:
     return mac
+
 def build_redistribute_routes(device):
-    sub_ctx=[]
+    ##Add route-maps handling @TODO
+    sub_ctx={}
     # respond=get_object(nb, 'plugins.bgp.routing-policy', param={})
     # for data in respond:
     #     sub_ctx={data.custom_fields['BGP_redistribute_ipv4']:{'route_map':[]}}
     respond=device.config_context['local-routing']['bgp']
     for k in respond:
         if 'parameters' in k:
-            sub_ctx.append(k['parameters']['redistribute'])
+            sub_ctx[k['parameters']['redistribute']]=None
     return sub_ctx
 
 def build_l2vpns(param: object):
@@ -470,15 +472,19 @@ def build_l2vpns(param: object):
             vlan_l2vpn_termination=get_object(nb,'ipam.vlans',dict(id=vlan['id']))['l2vpn_termination']
             l2term=get_object(nb,'ipam.l2vpn-terminations',dict(id=vlan_l2vpn_termination['id']))
             l2vpn=get_object(nb,'ipam.l2vpns',dict(id=l2term.l2vpn.id))
-            sub_ctx.append({
-                'id':l2term.assigned_object.vid,
+            _import=[str(x) for x in l2vpn.import_targets]
+            _export=[str(x) for x in l2vpn.export_targets]
+            data={'id':l2term.assigned_object.vid,
                 'rd':l2vpn.custom_fields['rd_vlan'],
-                'route_targets':{'import':[str(x) for x in l2vpn.import_targets],
-                                 'export':[str(x) for x in l2vpn.export_targets]
-                                 },
                 'redistribute_routes':[l2vpn.custom_fields['redistribute_l2vpn']]
             }
-            )
+            if _import==_export:
+                data['route_targets']={'both':_import}
+            else:
+                data['route_targets'] = {'import':_import,
+                                         'export':_export
+                                         }
+            sub_ctx.append(data)
     else:
         sub_ctx=None
     return sub_ctx

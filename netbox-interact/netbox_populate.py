@@ -794,7 +794,9 @@ def provision_vlanintf() -> None:
                         ) is not None
                     else operator.attrgetter('ipam.ip-addresses')(nb).create(ipaddress)
                 )
-
+def get_asn(asn: str):
+    display=re.search(r"\d+\.\d", asn).group().split()[0]
+    return display
 
 def provision_bgp() -> None:
     '''https://www.ciscolive.com/c/dam/r/ciscolive/emea/docs/2019/pdf/BRKSPG-2303.pdf'''
@@ -884,10 +886,6 @@ def provision_bgp() -> None:
             from arista_encrypt import cbc_encrypt
             encrypted = cbc_encrypt(bytes(group_peer, 'utf-8'), bytes(password, 'utf-8'))
             return encrypted
-        def get_asn(asn: str):
-            display=re.search(r"\d+\.\d", asn).group().split()[0]
-            return display
-
         bgp_tables = list()
         local_ctx = {}
         attr_nb = "ipam.ip-addresses"
@@ -1518,10 +1516,13 @@ def provision_overlay() -> None:
     vxlan1 = list(operator.attrgetter('dcim.interfaces')(nb).filter(**dict(name='Vxlan1')))
     target_rt = list(operator.attrgetter('ipam.route-targets')(nb).all())
     for intf in vxlan1:
+        loopback0 = operator.attrgetter('dcim.interfaces')(nb).get(**dict(name='Loopback0', device_id=intf.device.id))
+        addr=str(operator.attrgetter('ipam.ip-addresses')(nb).get(**dict(interface_id=loopback0.id))).split('/')[0]
         vlans = [operator.attrgetter('ipam.vlans')(nb).get(id=x['id']) for x in intf.custom_fields['evpn_l2vpn']]
         for vlan in vlans:
             rt_param = get_rt(target_rt, vlan.id)
-            rd_vlan = f'{intf.device.custom_fields["evpn_asn"]["asn"]}:{vlan.custom_fields["evpn_vni"]}'
+            # rd_vlan = f'{intf.device.custom_fields["evpn_asn"]["asn"]}:{vlan.custom_fields["evpn_vni"]}'
+            rd_vlan = f'{addr}:{vlan.custom_fields["evpn_vni"]}'
             l2vpn_params = dict(identifier=vlan.custom_fields['evpn_vni'], name=f'{str(vlan)}-{str(intf.device)}',
                                 slug=slugify.slugify(text=f'{str(vlan)}-{str(intf.device)}'), type="vxlan-evpn",
                                 import_targets=[rt_param], export_targets=[rt_param],
