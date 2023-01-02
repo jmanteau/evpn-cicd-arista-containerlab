@@ -65,9 +65,9 @@ def build_peer_group(param: object):
         for k,v in rm.items():
             for key,values in v.items():
                 if 'session_in' in values:
-                    import_policies=values['session_in'] if values['session_in'] == session else None
+                    import_policies=k if values['session_in'] == session else None
                 if 'session_out' in values:
-                    export_policies=values['session_out']if values['session_out'] == session else None
+                    export_policies=k if values['session_out'] == session else None
         return {"in":import_policies,"out":export_policies}
     sub_ctx = {}
     respond = get_object(nb, 'plugins.bgp.bgpsession', dict(device=str(param)))
@@ -398,9 +398,9 @@ def build_vlan_interfaces(param: object):
                 respond = get_object(nb, 'dcim.interfaces', dict(device=str(param), name='VLAN_DATABASE'))[0]
                 if respond:
                     is_mlag =[str(vlan.vid) for vlan in respond.tagged_vlans if 'mlag' in str(vlan).lower()]
-                    if int(str(data)) in is_mlag:
+                    if str(data) in is_mlag:
                         sub_ctx[intvlan]['mtu'] =data.mtu
-                    if int(str(data))==4093:
+                    if str(data)=='4093':
                         sub_ctx[intvlan]['no_autostate'] = True
                 if data.vrf is not None:
                     sub_ctx[intvlan]['vrf']=str(data.vrf)
