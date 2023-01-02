@@ -106,7 +106,7 @@ def build_peer_group(param: object):
         if k.custom_fields['BGP_next_hop_unchanged'] is True:
             sub_ctx[str(k)]['next_hop_unchanged'] = True
         if k.custom_fields['BGP_next_hop_self'] is True:
-            sub_ctx[str(k)]['BGP_next_hop_self']=True
+            sub_ctx[str(k)]['next_hop_self']=True
         if export_policies:
             sub_ctx[str(k)]['route_map_out'] = export_policies
         if import_policies:
