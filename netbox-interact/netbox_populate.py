@@ -19,9 +19,6 @@ import slugify
 urllib3.disable_warnings()
 
 
-# TODO assign next-hop-self to ibgp-mlag-peer
-# TODO fix route-target vrf assigns
-# TODO refact l2vpn/terminations
 def manual_call():
     HEADERS = {
         "Content-Type": "application/json;",
@@ -1572,9 +1569,9 @@ def provision_bgp_policies() -> None:
         #                                                                 'statements':f'{str(ip_addr_lo1)} eq 32'}
 
         local_ctx=device.local_context_data
-        local_ctx['routing-policies']={'route-maps':{}}
+        local_ctx['routing-policies']={'route-maps':{},'prefix_lists':{}}
         index=get_index()
-        # local_ctx['routing-policies']['route-maps']['rm-conn-2-bgp']={f'{index.pop(0)}':{'action':'permit',
+        # local_ctx['routing-policies']['prefix_lists']['rm-conn-2-bgp']={f'{index.pop(0)}':{'action':'permit',
         #                                                                     'clause':'match',
         #                                                                     'prefix_lists':[prefix_dict]
         #                                                                     },
