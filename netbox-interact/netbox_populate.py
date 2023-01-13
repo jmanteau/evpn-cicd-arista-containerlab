@@ -171,7 +171,7 @@ def get_or_create(concept, search="slug", **kwargs):
     Returns:
         object: The getted or created Netbox object
     """
-    print(kwargs)
+    # print(kwargs)
     if search == "slug":
         nb_object = (
             tmp
@@ -209,10 +209,10 @@ def get_or_create(concept, search="slug", **kwargs):
             if (tmp := concept.get(vid=kwargs["vid"], group_id=kwargs["group"])) is not None
             else concept.create(kwargs)
         )
-    elif search == "rd":
+    elif search == "vrf":
         nb_object = (
             tmp
-            if (tmp := concept.get(rd=kwargs["rd"])) is not None
+            if (tmp := concept.get(name=kwargs["name"],description=kwargs["description"])) is not None
             else concept.create(kwargs)
         )
     return nb_object
@@ -271,7 +271,6 @@ def provision_devices() -> None:
     global leafs
     leafs = list(operator.attrgetter('dcim.devices')(nb).filter(role="leaf"))
 
-
 def provision_customfields() -> None:
     # Create ASN information for each device
     cf_asn = get_or_create(
@@ -316,8 +315,9 @@ def provision_customfields() -> None:
         search="name",
         name="redistribute_l2vpn",
         content_types=["ipam.l2vpn"],
-        type="select",
-        choices=["dot1x", "host-route", "igmp", "learned", "link-local", "router-mac", "static"]
+        type="multiselect",
+        choices=["dot1x", "host-route", "igmp", "learned","learned remote", "link-local ipv6", "router-mac",
+                 "router-mac next-hop vtep primary","router-mac system","static"]
     )
     cf_l3_redistribute = get_or_create(
         operator.attrgetter('extras.custom-fields')(nb),
@@ -325,7 +325,7 @@ def provision_customfields() -> None:
         name="redistribute_l3vpn",
         content_types=["ipam.vrf"],
         type="multiselect",
-        choices=["attached-host", "bgp", "connected", "dynamic", "isis", "ospf", "ospfv3", "rip", "static"]
+        choices=["connected","connected route-map","dynamic","static", "static route-map"]
     )
     # Create Custom Fields VNI on VLAN / VRF
     cf_vni = get_or_create(
@@ -379,6 +379,18 @@ def provision_customfields() -> None:
         object_type='dcim.device',
         label="device"
     )
+
+    # cf_vrf_vc_chassis = get_or_create(
+    #     operator.attrgetter('extras.custom-fields')(nb),
+    #     search="name",
+    #     name="vrf_vc_chassis",
+    #     description="where the vrf has been setup",
+    #     content_types=["ipam.vrf"],
+    #     type="object",
+    #     object_type='dcim.virtualchassis',
+    #     label="Virtual chassis"
+    # )
+
     cf_l3vpn_vrf = get_or_create(
         operator.attrgetter('extras.custom-fields')(nb),
         search="name",
@@ -659,30 +671,81 @@ def provision_networks() -> None:
     vlangrp = list()
     role_list = list()
     for k, v in ipams.items():
-        role_list.extend([x['role'] for x in v if x['role']])
-        prefixes_list.extend(
-            [dict(subnet=x['subnet'],
-                  vlan=x['vlan'],
-                  role=x['role'],
-                  vrf=x['vrf'],
-                  sites=site_palette.id,
-                  tenant=tenant_rainbow.id,
-                  device=k
-                  ) for x in v if x['subnet'] and dict(subnet=x['subnet'], vlan=x['vlan'], role=x['role'], vrf=x['vrf'],
-                                                       device=k)
-             not in prefixes_list
-             ]
-        )
         if 'leaf' in k:
-            vlangrp.append(k)
-            networks_list.extend([dict(
-                vlangrp=k,
-                vlan=x['vlan'],
-                role=x['role'],
-                vrf=x['vrf'],
-                vni=x['vni']) for x in v if x['vlan']['id']
-            ]
-            )
+            if any(list(filter(lambda x: 'mlag' in x and x['mlag'] is not None,v))):
+                peer=(list(filter(lambda x: 'mlag' in x and x['mlag'] is not None,v)))[0]
+                device = f'{str(site_palette)[:2].lower()}-{peer["mlag"]}'
+                _k=device
+                for data in v:
+                    if 'networks' in data:
+                        role_list.extend([x['role'] for x in data['networks'] if x['role']])
+                        networks_list.extend([dict(
+                            vlangrp=device,
+                            vlan=x['vlan'],
+                            role=x['role'],
+                            vrf=x['vrf'],
+                            vnid=x['vni']) for x in data['networks'] if x['vlan']['id']
+                        ])
+                        prefixes_list.extend(
+                            [dict(subnet=x['subnet'],
+                                  vlan=x['vlan'],
+                                  role=x['role'],
+                                  vrf=x['vrf'],
+                                  sites=site_palette.id,
+                                  tenant=tenant_rainbow.id,
+                                  device=_k
+                                  ) for x in data['networks'] if
+                             x['subnet'] and dict(subnet=x['subnet'], vlan=x['vlan'], role=x['role'], vrf=x['vrf'],
+                                                  device=_k)
+                             not in prefixes_list
+                             ]
+                        )
+            else:
+                device = k
+                for data in v:
+                    if 'networks' in data:
+                        role_list.extend([x['role'] for x in data['networks'] if x['role']])
+                        networks_list.extend([dict(
+                            vlangrp=device,
+                            vlan=x['vlan'],
+                            role=x['role'],
+                            vrf=x['vrf'],
+                            vnid=x['vni']) for x in data['networks'] if x['vlan']['id']
+                        ])
+                        prefixes_list.extend(
+                            [dict(subnet=x['subnet'],
+                                  vlan=x['vlan'],
+                                  role=x['role'],
+                                  vrf=x['vrf'],
+                                  sites=site_palette.id,
+                                  tenant=tenant_rainbow.id,
+                                  device=device
+                                  ) for x in data['networks'] if
+                             x['subnet'] and dict(subnet=x['subnet'], vlan=x['vlan'], role=x['role'], vrf=x['vrf'],
+                                                  device=device)
+                             not in prefixes_list
+                             ]
+                        )
+            # vlangrp.extend([device for x in vlangrp if device not in vlangrp])
+            if device not in vlangrp: vlangrp.append(device)
+        else:
+            for data in v:
+                if 'networks' in data:
+                    role_list.extend([x['role'] for x in data['networks'] if x['role']])
+                    prefixes_list.extend(
+                        [dict(subnet=x['subnet'],
+                              vlan=x['vlan'],
+                              role=x['role'],
+                              vrf=x['vrf'],
+                              sites=site_palette.id,
+                              tenant=tenant_rainbow.id,
+                              device=k
+                              ) for x in data['networks'] if
+                         x['subnet'] and dict(subnet=x['subnet'], vlan=x['vlan'], role=x['role'], vrf=x['vrf'],
+                                              device=k)
+                         not in prefixes_list
+                         ]
+                    )
     # Create roles
     for data in set(role_list):
         role = get_or_create(
@@ -693,15 +756,15 @@ def provision_networks() -> None:
 
     # Create VLAN groups
     for data in vlangrp:
-        vlangroups = get_or_create(
-            operator.attrgetter('ipam.vlan_groups')(nb),
-            name=data,
-            slug=slugify.slugify(text=data),
-            scope_type="dcim.site",
-            scope_id=site_palette.id,
-        )
-
-    # Create VLAN (add vni) / Assign tags to vlan
+        if isinstance(data,str):
+            vlangroups = get_or_create(
+                operator.attrgetter('ipam.vlan_groups')(nb),
+                name=data,
+                slug=slugify.slugify(text=data),
+                scope_type="dcim.site",
+                scope_id=site_palette.id,
+            )
+    # Create VLAN (add vni)
     for data in networks_list:
         vlan = get_or_create(
             operator.attrgetter('ipam.vlans')(nb),
@@ -709,24 +772,41 @@ def provision_networks() -> None:
             name=data['vlan']['name'],
             vid=data['vlan']['id'],
             site=site_palette.id,
+            role=operator.attrgetter('ipam.roles')(nb).get(**dict(name=data['role'])).id,
             group=operator.attrgetter('ipam.vlan_groups')(nb).get(**dict(name=data['vlangrp'])).id,
             tenant=tenant_rainbow.id,
             scope_id=site_palette.id,
-            custom_fields={"evpn_vni": data['vni']},
+            custom_fields={"evpn_vni": data['vnid']},
         )
     # Create VRF
     for data in networks_list:
         if data['vrf']:
-            device_id = operator.attrgetter('dcim.devices')(nb).get(**dict(name=data['vlangrp'])).id
-            vrf = get_or_create(
+            if 'vsw' in data['vlangrp']:
+                # device_id = operator.attrgetter('dcim.virtual-chassis')(nb).get(**dict(name=data['vlangrp'])).id
+                vrf = get_or_create(
                 operator.attrgetter('ipam.vrfs')(nb),
-                search='rd',
+                search='vrf',
                 name=data['vrf']['name'],
                 tenant=tenant_rainbow.id,
-                rd=f'{device_id}:{data["vrf"]["vni"]}',
+                #rd=f'{device_id}:{data["vrf"]["vni"]}',
                 description=data['vlangrp'],
-                custom_fields={"evpn_vni": data['vrf']['vni'], "vrf_device": device_id},
+                custom_fields={"evpn_vni": data['vrf']['vni'],
+                #"vrf_vc_chassis": device_id,
+                },
             )
+            else:
+                device_id = operator.attrgetter('dcim.devices')(nb).get(**dict(name=data['vlangrp'])).id
+                vrf = get_or_create(
+                    operator.attrgetter('ipam.vrfs')(nb),
+                    search='vrf',
+                    name=data['vrf']['name'],
+                    tenant=tenant_rainbow.id,
+                    #rd=f'{device_id}:{data["vrf"]["vni"]}',
+                    description=data['vlangrp'],
+                    custom_fields={"evpn_vni": data['vrf']['vni'],
+                    "vrf_device": device_id,
+                    },
+                )
 
     # Create Prefix
     for data in prefixes_list:
@@ -757,10 +837,13 @@ def provision_vlanintf() -> None:
         if not 'leaf' in node:
             continue
         device_id = operator.attrgetter('dcim.devices')(nb).get(**dict(name=node)).id
-        vlans.extend([data for data in params if data['vlan']['id']])
+        networks=list(filter(lambda x: 'networks' in x,params))[0]['networks']
+        vlans.extend([data for data in networks if data['vlan']['id']])
+        is_mlag=(list(filter(lambda x: 'mlag' in x and x['mlag'] is not None,params)))
         for vlan in vlans:
             vid = vlan['vlan']['id']
-            vlan_id = operator.attrgetter('ipam.vlans')(nb).get(**(dict(vid=vid, group=node))).id
+            vlan_id = operator.attrgetter('ipam.vlans')(nb).get(**(dict(vid=vid, group=node if len(is_mlag)==0 else \
+                f'{str(site_palette)[:2].lower()}-{is_mlag[0]["mlag"]}'))).id
             prefixe = operator.attrgetter('ipam.prefixes')(nb).get(**(dict(vlan_id=vlan_id))).available_ips.list()
             intvlan = dict(device=device_id,
                            name=vid,
@@ -770,7 +853,8 @@ def provision_vlanintf() -> None:
                            )
             if vlan['vrf']:
                 vrf_name = vlan['vrf']['name']
-                intvlan['vrf'] = operator.attrgetter('ipam.vrfs')(nb).get(**dict(name=vrf_name, description=node)).id
+                intvlan['vrf'] = operator.attrgetter('ipam.vrfs')(nb).get(**dict(name=vrf_name, description=node \
+                                    if len(is_mlag)==0 else f'{str(site_palette)[:2].lower()}-{is_mlag[0]["mlag"]}')).id
             nb_intvlan = (
                 tmp
                 if (tmp := operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=node,
@@ -958,7 +1042,9 @@ def provision_bgp() -> None:
         for device in inventory:
             for intf in device['interfaces']:
                 if 'mlag-ibgp' in [str(x) for x in intf.tagged_vlans] and intf.count_ipaddresses == 1:
-                    mlagvlan = operator.attrgetter('ipam.vlans')(nb).get(**dict(vid=4094, group=str(device['host'])))
+                    vsw=(list(filter(lambda x: 'mlag' in x and x['mlag'] is not None,ipams[str(device['host'])])))[0]
+                    vlgrp= f"{str(site_palette)[:2].lower()}-{vsw['mlag']}"
+                    mlagvlan = operator.attrgetter('ipam.vlans')(nb).get(**dict(vid=4094, group=vlgrp))
                     if mlagvlan:
                         peer_mlag = list(
                             operator.attrgetter('dcim.interfaces')(nb).filter(**dict(device=str(device['host']),
@@ -1114,11 +1200,13 @@ def provision_rir_aggregates() -> None:
     process_json()
     rir_list = list()
     prefixes_list = list()
-    for k, v in ipams.items():
-        rir_list.extend([x['rir'] for x in v if x['rir']])
-        prefixes_list.extend([dict(prefix=x['subnet'], rir=x['rir']) for x in v if x['subnet'] and
-                              dict(prefix=x['subnet'], rir=x['rir']) not in prefixes_list]
-                             )
+    for key, values in ipams.items():
+        for data in values:
+            if 'networks' in data:
+                rir_list.extend(x['rir'] for x in data['networks'])
+                prefixes_list.extend(
+                    [dict(prefix=x['subnet'], rir=x['rir']) for x in data['networks'] if x['subnet'] and
+                     dict(prefix=x['subnet'], rir=x['rir']) not in prefixes_list])
     for data in set(rir_list):
         slug = slugify.slugify(text=data)
         if not operator.attrgetter('ipam.rirs')(nb).get(**dict(name=data)):
@@ -1187,8 +1275,10 @@ def provision_mlag() -> None:
     root_vhwdaddress = generate_mac.vid_file_vendor('manuf', "Arista")
     for node in evpnlab["topology"]['nodes']:
         if 'leaf' in node:
-            mlagvlan = operator.attrgetter('ipam.vlans')(nb).get(**dict(vid=4094, group=node))
-            if mlagvlan:
+            vlangrp=(list(filter(lambda x: 'mlag' in x and x['mlag'] is not None, ipams[node])))
+            if vlangrp:
+                mlagvlan = operator.attrgetter('ipam.vlans')(nb).get(**dict(vid=4094,
+                                                        group=f'{str(site_palette)[:2].lower()}-{vlangrp[0]["mlag"]}'))
                 vhwdaddress = generate_mac.another_same_vid(root_vhwdaddress)
                 host = operator.attrgetter('dcim.devices')(nb).get(**dict(name=node))
                 interface = dict(device=host.id,
@@ -1232,8 +1322,10 @@ def provision_mlag() -> None:
                                 interface.update(lag_intf)
                 if not host.virtual_chassis and interface.lag:
                     members = [host, interface.connected_endpoints[0].device]
-                    vc_param = dict(name=f'vcmlag_{node}_{str(interface.connected_endpoints[0].device)}',
-                                    domain='domain')
+                    # vc_param = dict(name=f'vcmlag_{node}_{str(interface.connected_endpoints[0].device)}',
+                    #                 domain='domain')
+                    vc_param = dict(name=f'{str(site_palette)[:2].lower()}-{vlangrp[0]["mlag"]}',
+                                    domain=f'{str(site_palette)[:2].lower()}-{vlangrp[0]["mlag"]}')
                     vcchassis = (
                         tmp
                         if (tmp := operator.attrgetter('dcim.virtual-chassis')(nb).get(**vc_param)
@@ -1283,13 +1375,15 @@ def provision_mlag() -> None:
                         name='mlag-ibgp',
                         slug=slugify.slugify(text='mlag-ibgp')
                     )
+                _vlangrp=f'{str(site_palette)[:2].lower()}-{vlangrp[0]["mlag"]}'
                 vlan = get_or_create(
                     operator.attrgetter('ipam.vlans')(nb),
                     search="vlan",
                     name="mlag-ibgp",
                     vid=4093,
                     site=site_palette.id,
-                    group=operator.attrgetter('ipam.vlan-groups')(nb).get(**dict(name=node)).id,
+                    role=operator.attrgetter('ipam.roles')(nb).get(**dict(name=str(role))).id,
+                    group=operator.attrgetter('ipam.vlan-groups')(nb).get(**dict(name=_vlangrp)).id,
                     tenant=tenant_rainbow.id,
                     scope_id=site_palette.id,
                 )
@@ -1329,8 +1423,10 @@ def provision_mlag() -> None:
                 vlan.update(dict(mtu=9000))
     for node in evpnlab["topology"]['nodes']:
         if 'leaf' in node:
-            mlagvlan = operator.attrgetter('ipam.vlans')(nb).get(**dict(vid=4094, group=node))
-            if mlagvlan:
+            vlangrp=(list(filter(lambda x: 'mlag' in x and x['mlag'] is not None, ipams[node])))
+            if vlangrp:
+                _vlangrp=f'{str(site_palette)[:2].lower()}-{vlangrp[0]["mlag"]}'
+                mlagvlan = operator.attrgetter('ipam.vlans')(nb).get(**dict(vid=4094, group=_vlangrp))
                 peer_mlag = list(
                     operator.attrgetter('dcim.interfaces')(nb).filter(**dict(device=node, vlan_id=mlagvlan.id)))
                 peer_intf = [x for x in peer_mlag if
@@ -1360,22 +1456,70 @@ def provision_mlag() -> None:
                                                  assigned_object_id=x.id)
                                 operator.attrgetter('ipam.ip-addresses')(nb).create(ipaddress)
 
-
+def provision_fhrp_mlag() -> None:
+    evpnlab=invok_evpnlab()
+    mlag_devices=list()
+    for node in evpnlab["topology"]['nodes']:
+        if 'leaf' in node:
+            vlangrp=(list(filter(lambda x: 'mlag' in x and x['mlag'] is not None, ipams[node])))
+            if vlangrp: mlag_devices.append(node)
+    for node in mlag_devices:
+        id = [i for i in range(1, 11)]
+        interfaces = list()
+        interfaces.extend(x for x in list(operator.attrgetter('dcim.interfaces')(nb).filter(**dict(device=node))) if
+                 str(x.type) == 'Virtual' and x.tagged_vlans and len(x.tagged_vlans) == 1 and x.tagged_vlans[
+                     0].vid not in [4093, 4094])
+        for intf in interfaces:
+            prefix=list()
+            address=operator.attrgetter('ipam.ip-addresses')(nb).get(**dict(interface_id=intf.id))
+            prefix.extend(
+                x for x in list(operator.attrgetter('ipam.prefixes')(nb).filter(**dict(within_include=address.address)))
+                if str(x.vlan.group) == f'{str(site_palette)[:2].lower()}-{vlangrp[0]["mlag"]}')
+            fhrp_params=dict(protocol='other',
+                             group_id=id.pop(0),
+                             description=f'{str(site_palette)[:2].lower()}-{vlangrp[0]["mlag"]}',
+                             status='active')
+            fhrp_group = (
+                tmp
+                if (tmp := operator.attrgetter('ipam.fhrp-groups')(nb).get(**(dict(protocol=fhrp_params['protocol'],
+                                                                                   group_id=fhrp_params['group_id'])))
+                    ) is not None
+                else operator.attrgetter('ipam.fhrp-groups')(nb).create(fhrp_params))
+            if fhrp_group and not fhrp_group.ip_addresses:
+                ipaddress = dict(address=str(prefix[0].available_ips.list()[0]), assigned_object_type='ipam.fhrpgroup',
+                                 assigned_object_id=fhrp_group.id,role='vip')
+                if prefix[0].vrf: ipaddress['vrf']=prefix[0].vrf.id
+                operator.attrgetter('ipam.ip-addresses')(nb).create(ipaddress)
+            if not intf.count_fhrp_groups:
+                data=dict(group=fhrp_group.id, interface_id=intf.id,interface_type='dcim.interface',
+                                       priority=0)
+                # fhrp_group_assign =(
+                #     tmp
+                #     if (tmp := operator.attrgetter('ipam.fhrp-group-assignments')(nb).get(
+                #         **dict(group_id=data['group']))
+                #         ) is not None
+                #     else operator.attrgetter('ipam.fhrp-group-assignments')(nb).create(data)
+                # )
+                operator.attrgetter('ipam.fhrp-group-assignments')(nb).create(data)
 
 def provision_assign_vlans() -> None:
     for device in leafs:
-        vlans = list(operator.attrgetter('ipam.vlans')(nb).filter(**dict(group=str(device))))
+        is_mlag = (list(filter(lambda x: 'mlag' in x and x['mlag'] is not None, ipams[str(device)])))
+        vlans = list(operator.attrgetter('ipam.vlans')(nb).filter(**dict(group=str(device) if not is_mlag else \
+            f'{str(site_palette)[:2].lower()}-{is_mlag[0]["mlag"]}')))
         vid_list = [data.id for data in vlans]
         vlandatabase = operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=str(device), name='VLAN_DATABASE'))
         if not vlandatabase.tagged_vlans == vlans:
             vlandatabase.update(dict(mode='tagged', tagged_vlans=vid_list))
             vlandatabase.save()
         vxlan1 = operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=str(device), name='Vxlan1'))
-        param = list(filter(lambda x: x['evpn'] == True, ipams[str(device)]))
-        l2vpn_id = [operator.attrgetter('ipam.vlans')(nb).get(**dict(vid=x['vlan']['id'], group=str(device))).id
+        param = list(filter(lambda x: x['evpn'] == True, ipams[str(device)][0]['networks']))
+        l2vpn_id = [operator.attrgetter('ipam.vlans')(nb).get(**dict(vid=x['vlan']['id'], group=str(device) if not \
+            is_mlag else f'{str(site_palette)[:2].lower()}-{is_mlag[0]["mlag"]}')).id
                     for x in param if x['vlan']['id']
                     ]
-        l3vpn_id = [operator.attrgetter('ipam.vrfs')(nb).get(**dict(name=x['vrf']['name'], description=str(device))).id
+        l3vpn_id = [operator.attrgetter('ipam.vrfs')(nb).get(**dict(name=x['vrf']['name'], description=str(device) \
+            if not is_mlag else f'{str(site_palette)[:2].lower()}-{is_mlag[0]["mlag"]}')).id
                     for x in param if x['vrf']
                     ]
 
@@ -1384,10 +1528,11 @@ def provision_assign_vlans() -> None:
                            )
                       )
         vxlan1.save()
-        interfaces_list = list(filter(lambda x: x['vlan']['interfaces'], ipams[str(device)]))
+        interfaces_list = list(filter(lambda x: x['vlan']['interfaces'], ipams[str(device)][0]['networks']))
         taggedvlans_params = [dict(vid=x['vlan']['id'], interfaces=x['vlan']['interfaces']) for x in interfaces_list]
         for data in taggedvlans_params:
-            vid_id = operator.attrgetter('ipam.vlans')(nb).get(**dict(vid=data['vid'], group=str(device))).id
+            vid_id = operator.attrgetter('ipam.vlans')(nb).get(**dict(vid=data['vid'], group=str(device) if not \
+                is_mlag else f'{str(site_palette)[:2].lower()}-{is_mlag[0]["mlag"]}')).id
             for intf in data['interfaces']:
                 interface = operator.attrgetter('dcim.interfaces')(nb).get(**dict(device=str(device), name=intf))
                 if interface:
@@ -1445,12 +1590,18 @@ def provision_overlay() -> None:
 
     _leafs=list(operator.attrgetter('dcim.devices')(nb).filter(**dict(role='leaf')))
     # update rd for vrfs
-    vrfs_list = [x for x in list(operator.attrgetter('ipam.vrfs')(nb).all()) if x.rd]
+    vrfs_list = [x for x in list(operator.attrgetter('ipam.vrfs')(nb).all()) if x.custom_fields['evpn_vni']]
     for vrf in vrfs_list:
         evpn_vni = vrf['custom_fields']['evpn_vni']
-        lo0 = str(operator.attrgetter('ipam.ip-addresses')(nb).get(
-            **dict(device_id=vrf['custom_fields']['vrf_device']['id'], interface='Loopback0'))).split('/')[0]
-        rd = f'{lo0}:{evpn_vni}'
+        #device=operator.attrgetter('dcim.device')(nb).get(**dict(name=vrf['description']))
+        if vrf['custom_fields']['vrf_device']:
+            lo0 = str(operator.attrgetter('ipam.ip-addresses')(nb).get(
+                **dict(device_id=vrf['custom_fields']['vrf_device']['id'], interface='Loopback0'))).split('/')[0]
+            rd = f'{lo0}:{evpn_vni}'
+        # elif vrf['custom_fields']['vrf_vc_chassis']:
+        #     rd=f'{vrf["custom_fields"]["vrf_vc_chassis"].id}:{data["vrf"]["vni"]}'
+        else:
+            rd=f'{vrf.description}:{evpn_vni}'
         if vrf.rd != rd:
             vrf.update(dict(rd=rd))
             vrf.save()
@@ -1519,13 +1670,14 @@ def provision_overlay() -> None:
         for vlan in vlans:
             rt_param = get_rt(target_rt, vlan.id)
             # rd_vlan = f'{intf.device.custom_fields["evpn_asn"]["asn"]}:{vlan.custom_fields["evpn_vni"]}'
-            rd_vlan = f'{addr}:{vlan.custom_fields["evpn_vni"]}'
-            l2vpn_params = dict(identifier=vlan.custom_fields['evpn_vni'], name=f'{str(vlan)}-{str(intf.device)}',
+            # rd_vlan = f'{addr}:{vlan.custom_fields["evpn_vni"]}'
+            device=str(intf.device) if not intf.device.virtual_chassis else str(intf.device.virtual_chassis)
+            l2vpn_params = dict(identifier=vlan.custom_fields['evpn_vni'], name=f'{str(vlan)}-{device}',
                                 slug=slugify.slugify(text=f'{str(vlan)}-{str(intf.device)}'), type="vxlan-evpn",
                                 import_targets=[rt_param], export_targets=[rt_param],
                                 custom_fields=dict(
-                                    rd_vlan=rd_vlan,
-                                    redistribute_l2vpn='learned')
+                                    # rd_vlan=rd_vlan,
+                                    redistribute_l2vpn=['learned'])
                                 )
             l2vpn = (
                 tmp
@@ -1534,15 +1686,16 @@ def provision_overlay() -> None:
                                                                              type='vxlan-evpn'))) is not None
                 else operator.attrgetter('ipam.l2vpns')(nb).create(l2vpn_params)
             )
-            term_params = dict(l2vpn=l2vpn.id, assigned_object_type='ipam.vlan', assigned_object_id=vlan.id)
-            term = (
-                tmp
-                if (tmp := operator.attrgetter('ipam.l2vpn-terminations')(nb).get(**dict(
-                    l2vpn_id=term_params['l2vpn'],
-                    vlan_id=term_params['assigned_object_id']))
-                    ) is not None
-                else operator.attrgetter('ipam.l2vpn-terminations')(nb).create(term_params)
-            )
+            if not vlan.l2vpn_termination:
+                term_params = dict(l2vpn=l2vpn.id, assigned_object_type='ipam.vlan', assigned_object_id=vlan.id)
+                term = (
+                    tmp
+                    if (tmp := operator.attrgetter('ipam.l2vpn-terminations')(nb).get(**dict(
+                        l2vpn_id=term_params['l2vpn'],
+                        vlan_id=term_params['assigned_object_id']))
+                        ) is not None
+                    else operator.attrgetter('ipam.l2vpn-terminations')(nb).create(term_params)
+                )
 
 
 def provision_bgp_policies() -> None:
@@ -1629,6 +1782,8 @@ def provision_all():
     provision_hosts()
 
     provision_mlag()
+
+    provision_fhrp_mlag()
 
     provision_bgp()
 

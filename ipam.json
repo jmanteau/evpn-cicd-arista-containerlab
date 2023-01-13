@@ -1,373 +1,413 @@
 {
   "leaf1": [
     {
-      "subnet": "10.1.10.0/24",
-      "vlan": {
-        "id":110,
-        "name": "Tenant_A_Zone_1",
-        "interfaces": ["Ethernet3"]
-      },
-      "vrf": null,
-      "role": "data",
-      "rir": "private-subnets",
-      "vni": 1010,
-      "evpn": true
+      "networks": [
+        {
+          "subnet": "10.1.10.0/24",
+          "vlan": {
+            "id": 110,
+            "name": "Tenant_A_Zone_1",
+            "interfaces": [
+              "Ethernet3"
+            ]
+          },
+          "vrf": null,
+          "role": "data",
+          "rir": "private-subnets",
+          "vni": 1010,
+          "evpn": true
+        },
+        {
+          "subnet": "10.1.11.0/25",
+          "vlan": {
+            "id": 111,
+            "name": "Tenant_A_Zone_2",
+            "interfaces": null
+          },
+          "vrf": null,
+          "role": "data",
+          "rir": "private-subnets",
+          "vni": 1011,
+          "evpn": false
+        },
+        {
+          "subnet": "10.2.10.0/26",
+          "vlan": {
+            "id": 210,
+            "name": "Tenant_A_Zone_3",
+            "interfaces": [
+              "Ethernet4"
+            ]
+          },
+          "vrf": {
+            "name": "Zone-A",
+            "vni": 10
+          },
+          "role": "data",
+          "rir": "private-subnets",
+          "vni": 2010,
+          "evpn": true
+        },
+        {
+          "subnet": "10.2.11.0/27",
+          "vlan": {
+            "id": 211,
+            "name": "Tenant_A_Zone_4",
+            "interfaces": null
+          },
+          "vrf": null,
+          "role": "data",
+          "rir": "private-subnets",
+          "vni": 2011,
+          "evpn": false
+        },
+        {
+          "subnet": "172.31.255.0/24",
+          "vlan": {
+            "id": null,
+            "name": null,
+            "interfaces": null
+          },
+          "vrf": null,
+          "role": "evpn_underlay",
+          "rir": "private-subnets",
+          "vni": null,
+          "evpn": false
+        },
+        {
+          "subnet": "192.168.255.0/24",
+          "vlan": {
+            "id": null,
+            "name": null,
+            "interfaces": null
+          },
+          "vrf": null,
+          "role": "evpn-loopback",
+          "rir": "private-subnets",
+          "vni": null,
+          "evpn": false
+        },
+        {
+          "subnet": "192.168.254.0/24",
+          "vlan": {
+            "id": null,
+            "name": null,
+            "interfaces": null
+          },
+          "vrf": null,
+          "role": "evpn-vtep",
+          "rir": "private-subnets",
+          "vni": null,
+          "evpn": "false,"
+        }
+      ]
     },
     {
-      "subnet": "10.1.11.0/25",
-      "vlan": {
-        "id":111,
-        "name": "Tenant_A_Zone_2",
-        "interfaces": null
-      },
-      "vrf": null,
-      "role": "data",
-      "rir": "private-subnets",
-      "vni": 1011,
-      "evpn": false
-    },
-    {
-      "subnet": "10.2.10.0/26",
-      "vlan": {
-        "id":210,
-        "name": "Tenant_A_Zone_3",
-        "interfaces": ["Ethernet4"]
-      },
-      "vrf": {
-        "name": "Zone-A",
-        "vni": 10
-      },
-      "role": "data",
-      "rir": "private-subnets",
-      "vni": 2010,
-      "evpn": true
-    },
-    {
-      "subnet": "10.2.11.0/27",
-      "vlan": {
-        "id":211,
-        "name": "Tenant_A_Zone_4",
-        "interfaces": null
-      },
-      "vrf": null,
-      "role": "data",
-      "rir": "private-subnets",
-      "vni": 2011,
-      "evpn": false
-    },
-    {
-      "subnet": "172.31.255.0/24",
-      "vlan": {
-        "id":null,
-        "name": null,
-        "interfaces": null
-      },
-      "vrf": null,
-      "role": "evpn_underlay",
-      "rir": "private-subnets",
-      "vni": null,
-      "evpn": false
-    },
-    {
-      "subnet": "192.168.255.0/24",
-      "vlan": {
-        "id":null,
-        "name": null,
-        "interfaces": null
-      },
-      "vrf": null,
-      "role": "evpn-loopback",
-      "rir": "private-subnets",
-      "vni": null,
-      "evpn": false
-    },
-    {
-      "subnet": "192.168.254.0/24",
-      "vlan": {
-        "id":null,
-        "name": null,
-        "interfaces": null
-      },
-      "vrf": null,
-      "role": "evpn-vtep",
-      "rir": "private-subnets",
-      "vni": null,
-      "evpn": false
+      "mlag": null
     }
   ],
-    "leaf2": [
+  "leaf2": [
     {
-      "subnet": "10.1.10.0/24",
-      "vlan": {
-        "id":110,
-        "name": "Tenant_A_Zone_1",
-        "interfaces": ["Ethernet3"]
-      },
-      "vrf": null,
-      "role": "data",
-      "rir": "private-subnets",
-      "vni": 1010,
-      "evpn": true
+      "networks": [
+        {
+          "subnet": "10.1.10.0/24",
+          "vlan": {
+            "id": 110,
+            "name": "Tenant_A_Zone_1",
+            "interfaces": [
+              "Ethernet3"
+            ]
+          },
+          "vrf": null,
+          "role": "data",
+          "rir": "private-subnets",
+          "vni": 1010,
+          "evpn": true
+        },
+        {
+          "subnet": "10.1.11.0/25",
+          "vlan": {
+            "id": 111,
+            "name": "Tenant_A_Zone_2",
+            "interfaces": null
+          },
+          "vrf": null,
+          "role": "data",
+          "rir": "private-subnets",
+          "vni": 1011,
+          "evpn": false
+        },
+        {
+          "subnet": "10.2.10.0/26",
+          "vlan": {
+            "id": 210,
+            "name": "Tenant_A_Zone_3",
+            "interfaces": null
+          },
+          "vrf": {
+            "name": "Zone-A",
+            "vni": 20
+          },
+          "role": "data",
+          "rir": "private-subnets",
+          "vni": 2010,
+          "evpn": true
+        },
+        {
+          "subnet": "10.255.255.0/24",
+          "vlan": {
+            "id": 4094,
+            "name": "mlag-peer",
+            "interfaces": [
+              "Ethernet4"
+            ]
+          },
+          "vrf": null,
+          "role": "mlag",
+          "rir": "private-subnets",
+          "vni": null,
+          "evpn": false
+        },
+        {
+          "subnet": "10.255.254.0/24",
+          "vlan": {
+            "id": null,
+            "name": null,
+            "interfaces": null
+          },
+          "vrf": null,
+          "role": "mlag-keepalive",
+          "rir": "private-subnets",
+          "vni": null,
+          "evpn": false
+        },
+        {
+          "subnet": "172.31.255.0/24",
+          "vlan": {
+            "id": null,
+            "name": null,
+            "interfaces": null
+          },
+          "vrf": null,
+          "role": "evpn_underlay",
+          "rir": "private-subnets",
+          "vni": null,
+          "evpn": false
+        },
+        {
+          "subnet": "192.168.255.0/24",
+          "vlan": {
+            "id": null,
+            "name": null,
+            "interfaces": null
+          },
+          "vrf": null,
+          "role": "evpn-loopback",
+          "rir": "private-subnets",
+          "vni": null,
+          "evpn": false
+        },
+        {
+          "subnet": "192.168.254.0/24",
+          "vlan": {
+            "id": null,
+            "name": null,
+            "interfaces": null
+          },
+          "vrf": null,
+          "role": "evpn-vtep",
+          "rir": "private-subnets",
+          "vni": null,
+          "evpn": "false,"
+        }
+      ]
     },
     {
-      "subnet": "10.1.11.0/25",
-      "vlan": {
-        "id":111,
-        "name": "Tenant_A_Zone_2",
-        "interfaces": null
-      },
-      "vrf": null,
-      "role": "data",
-      "rir": "private-subnets",
-      "vni": 1011,
-      "evpn": false
-    },
-    {
-      "subnet": "10.2.10.0/26",
-      "vlan": {
-        "id":210,
-        "name": "Tenant_A_Zone_3",
-        "interfaces": null
-      },
-      "vrf": {
-        "name": "Zone-A",
-        "vni": 20
-      },
-      "role": "data",
-      "rir": "private-subnets",
-      "vni": 2010,
-      "evpn": true
-    },
-    {
-      "subnet": "10.255.255.0/24",
-      "vlan": {
-        "id":4094,
-        "name": "mlag-peer",
-        "interfaces": ["Ethernet4"]
-      },
-      "vrf": null,
-      "role": "mlag",
-      "rir": "private-subnets",
-      "vni": null,
-      "evpn": false
-    },
-    {
-      "subnet": "10.255.254.0/24",
-      "vlan": {
-        "id":null,
-        "name": null,
-        "interfaces": null
-      },
-      "vrf": null,
-      "role": "mlag-keepalive",
-      "rir": "private-subnets",
-      "vni": null,
-      "evpn": false
-    },
-    {
-      "subnet": "172.31.255.0/24",
-      "vlan": {
-        "id":null,
-        "name": null,
-        "interfaces": null
-      },
-      "vrf": null,
-      "role": "evpn_underlay",
-      "rir": "private-subnets",
-      "vni": null,
-      "evpn": false
-    },
-    {
-      "subnet": "192.168.255.0/24",
-      "vlan": {
-        "id":null,
-        "name": null,
-        "interfaces": null
-      },
-      "vrf": null,
-      "role": "evpn-loopback",
-      "rir": "private-subnets",
-      "vni": null,
-      "evpn": false
-    },
-    {
-      "subnet": "192.168.254.0/24",
-      "vlan": {
-        "id":null,
-        "name": null,
-        "interfaces": null
-      },
-      "vrf": null,
-      "role": "evpn-vtep",
-      "rir": "private-subnets",
-      "vni": null,
-      "evpn": false
+      "mlag": "vsw-leaf-1"
     }
   ],
-    "leaf3": [
+  "leaf3": [
     {
-      "subnet": "10.1.10.0/24",
-      "vlan": {
-        "id":110,
-        "name": "Tenant_A_Zone_1",
-        "interfaces": null
-      },
-      "vrf": null,
-      "role": "data",
-      "rir": "private-subnets",
-      "vni": 1010,
-      "evpn": true
+      "networks": [
+        {
+          "subnet": "10.1.10.0/24",
+          "vlan": {
+            "id": 110,
+            "name": "Tenant_A_Zone_1",
+            "interfaces": null
+          },
+          "vrf": null,
+          "role": "data",
+          "rir": "private-subnets",
+          "vni": 1010,
+          "evpn": true
+        },
+        {
+          "subnet": "10.1.11.0/25",
+          "vlan": {
+            "id": 111,
+            "name": "Tenant_A_Zone_2",
+            "interfaces": null
+          },
+          "vrf": null,
+          "role": "data",
+          "rir": "private-subnets",
+          "vni": 1011,
+          "evpn": false
+        },
+        {
+          "subnet": "10.2.10.0/26",
+          "vlan": {
+            "id": 210,
+            "name": "Tenant_A_Zone_3",
+            "interfaces": [
+              "Ethernet3"
+            ]
+          },
+          "vrf": {
+            "name": "Zone-A",
+            "vni": 20
+          },
+          "role": "data",
+          "rir": "private-subnets",
+          "vni": 2010,
+          "evpn": true
+        },
+        {
+          "subnet": "10.255.255.0/24",
+          "vlan": {
+            "id": 4094,
+            "name": "mlag-peer",
+            "interfaces": [
+              "Ethernet4"
+            ]
+          },
+          "vrf": null,
+          "role": "mlag",
+          "rir": "private-subnets",
+          "vni": null,
+          "evpn": false
+        },
+        {
+          "subnet": "10.255.254.0/24",
+          "vlan": {
+            "id": null,
+            "name": null,
+            "interfaces": null
+          },
+          "vrf": null,
+          "role": "mlag-keepalive",
+          "rir": "private-subnets",
+          "vni": null,
+          "evpn": false
+        },
+        {
+          "subnet": "172.31.255.0/24",
+          "vlan": {
+            "id": null,
+            "name": null,
+            "interfaces": null
+          },
+          "vrf": null,
+          "role": "evpn_underlay",
+          "rir": "private-subnets",
+          "vni": null,
+          "evpn": false
+        },
+        {
+          "subnet": "192.168.255.0/24",
+          "vlan": {
+            "id": null,
+            "name": null,
+            "interfaces": null
+          },
+          "vrf": null,
+          "role": "evpn-loopback",
+          "rir": "private-subnets",
+          "vni": null,
+          "evpn": false
+        },
+        {
+          "subnet": "192.168.254.0/24",
+          "vlan": {
+            "id": null,
+            "name": null,
+            "interfaces": null
+          },
+          "vrf": null,
+          "role": "evpn-vtep",
+          "rir": "private-subnets",
+          "vni": null,
+          "evpn": "false,"
+        }
+      ]
     },
     {
-      "subnet": "10.1.11.0/25",
-      "vlan": {
-        "id":111,
-        "name": "Tenant_A_Zone_2",
-        "interfaces": null
-      },
-      "vrf": null,
-      "role": "data",
-      "rir": "private-subnets",
-      "vni": 1011,
-      "evpn": false
-    },
-    {
-      "subnet": "10.2.10.0/26",
-      "vlan": {
-        "id":210,
-        "name": "Tenant_A_Zone_3",
-        "interfaces": ["Ethernet3"]
-      },
-      "vrf": {
-        "name":"Zone-A",
-        "vni": 20
-      },
-      "role": "data",
-      "rir": "private-subnets",
-      "vni": 2010,
-      "evpn": true
-    },
-    {
-      "subnet": "10.255.255.0/24",
-      "vlan": {
-        "id":4094,
-        "name": "mlag_peer",
-        "interfaces": ["Ethernet4"]
-      },
-      "vrf": null,
-      "role": "mlag",
-      "rir": "private-subnets",
-      "vni": null,
-      "evpn": false
-
-    },
-    {
-      "subnet": "10.255.254.0/24",
-      "vlan": {
-        "id":null,
-        "name": null,
-        "interfaces": null
-      },
-      "vrf": null,
-      "role": "mlag-keepalive",
-      "rir": "private-subnets",
-      "vni": null,
-      "evpn": false
-    },
-    {
-      "subnet": "172.31.255.0/24",
-      "vlan": {
-        "id":null,
-        "name": null,
-        "interfaces": null
-      },
-      "vrf": null,
-      "role": "evpn_underlay",
-      "rir": "private-subnets",
-      "vni": null,
-      "evpn": false
-    },
-    {
-      "subnet": "192.168.255.0/24",
-      "vlan": {
-        "id":null,
-        "name": null,
-        "interfaces": null
-      },
-      "vrf": null,
-      "role": "evpn-loopback",
-      "rir": "private-subnets",
-      "vni": null,
-      "evpn": false
-    },
-    {
-      "subnet": "192.168.254.0/24",
-      "vlan": {
-        "id":null,
-        "name": null,
-        "interfaces": null
-      },
-      "vrf": null,
-      "role": "evpn-vtep",
-      "rir": "private-subnets",
-      "vni": null,
-      "evpn": false
+      "mlag": "vsw-leaf-1"
     }
   ],
-    "spine1": [
+  "spine1": [
     {
-      "subnet": "172.31.255.0/24",
-      "vlan": {
-        "id":null,
-        "name": null,
-        "interfaces": null
-      },
-      "vrf": null,
-      "role": "evpn_underlay",
-      "rir": "private-subnets",
-      "vni": null,
-      "evpn": false
-    },
-    {
-      "subnet": "192.168.255.0/24",
-      "vlan": {
-        "id":null,
-        "name": null,
-        "interfaces": null
-      },
-      "vrf": null,
-      "role": "evpn-loopback",
-      "rir": "private-subnets",
-      "vni": null,
-      "evpn": false
+      "networks": [
+        {
+          "subnet": "172.31.255.0/24",
+          "vlan": {
+            "id": null,
+            "name": null,
+            "interfaces": null
+          },
+          "vrf": null,
+          "role": "evpn_underlay",
+          "rir": "private-subnets",
+          "vni": null,
+          "evpn": false
+        },
+        {
+          "subnet": "192.168.255.0/24",
+          "vlan": {
+            "id": null,
+            "name": null,
+            "interfaces": null
+          },
+          "vrf": null,
+          "role": "evpn-loopback",
+          "rir": "private-subnets",
+          "vni": null,
+          "evpn": false
+        }
+      ]
     }
   ],
-    "spine2": [
+  "spine2": [
     {
-      "subnet": "172.31.255.0/24",
-      "vlan": {
-        "id":null,
-        "name": null,
-        "interfaces": null
-      },
-      "vrf": null,
-      "role": "evpn_underlay",
-      "rir": "private-subnets",
-      "vni": null,
-      "evpn": false
-    },
-    {
-      "subnet": "192.168.255.0/24",
-      "vlan": {
-        "id":null,
-        "name": null,
-        "interfaces": null
-      },
-      "vrf": null,
-      "role": "evpn-loopback",
-      "rir": "private-subnets",
-      "vni": null,
-      "evpn": false
+      "networks": [
+        {
+          "subnet": "172.31.255.0/24",
+          "vlan": {
+            "id": null,
+            "name": null,
+            "interfaces": null
+          },
+          "vrf": null,
+          "role": "evpn_underlay",
+          "rir": "private-subnets",
+          "vni": null,
+          "evpn": false
+        },
+        {
+          "subnet": "192.168.255.0/24",
+          "vlan": {
+            "id": null,
+            "name": null,
+            "interfaces": null
+          },
+          "vrf": null,
+          "role": "evpn-loopback",
+          "rir": "private-subnets",
+          "vni": null,
+          "evpn": false
+        }
+      ]
     }
   ]
 }

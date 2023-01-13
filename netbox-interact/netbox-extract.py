@@ -143,8 +143,6 @@ def build_address_family_evpn(param: str):
     sub_ctx = {}
     respond = get_object(nb, 'plugins.bgp.bgpsession', dict(device=param))
     for k in respond:
-        # if str(k.peer_group) == 'evpn-overlay-peers':
-        #     sub_ctx[str(k.peer_group)]={'activate': True}
         if k.custom_fields['BGP_address_family']=='Evpn':
             sub_ctx[str(k.peer_group)] = {'activate': True}
     return sub_ctx
@@ -356,6 +354,7 @@ def build_vxlan_interfaces(param: object):
         return sub_ctx
 
     def build_vrfs_list(param: list):
+        #vxlan_vni_mappings=dict(vlans=dict(),vrfs=dict())
         sub_ctx={}
         if param:
             for data in param:
@@ -572,8 +571,8 @@ def build_mlag_conf(device: object):
         return sub_ctx
 
 def build_bgp_as(asn :str):
-    display = re.search(r"\d+\.\d", asn).group().split()[0]
-    return display
+    respond = re.search(r"\d+\.\d", asn).group().split()[0]
+    return respond
 
 def build_bgp_router_id(device: object):
     respond=str(get_object(nb, 'ipam.ip-addresses',dict(device=str(device),interface='Loopback0'))).split('/')[0]
@@ -594,9 +593,9 @@ def ddict2dict(d):
 
 
 ''' Get all devices object from netbox where device_role is not server value '''
-devices_list = list(operator.attrgetter('dcim.devices')(nb).filter(**dict(role='leaf'))) + list(
-    operator.attrgetter('dcim.devices')(nb).filter(**dict(role='spine')))
-# devices_list = [operator.attrgetter('dcim.devices')(nb).get(**dict(name='leaf2'))]
+# devices_list = list(operator.attrgetter('dcim.devices')(nb).filter(**dict(role='leaf'))) + list(
+#     operator.attrgetter('dcim.devices')(nb).filter(**dict(role='spine')))
+devices_list = [operator.attrgetter('dcim.devices')(nb).get(**dict(name='leaf2'))]
 for device in devices_list:
     structured_config = ddict()
     role=str(device.device_role)
