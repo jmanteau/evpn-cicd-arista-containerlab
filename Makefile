@@ -88,7 +88,7 @@ startupaws: awslogin awsvmup
 aws-install: aws-required python-setup
 
 ## 2️⃣️ -2️⃣ (Inside 🎛 ) ⚙️  setup Ansible and image prerequisites on the AWS instance (should be done only once)
-setupaws: ansible-setup awsceosimage images tooling-setup
+setupaws: ansible-setup awsceosimage images tooling-setup ansible-folder
 
 ## 3️⃣️  (Inside 🎛 ) ▶️  launch lab on the AWS instance
 spinaws: labup 
@@ -113,7 +113,7 @@ startuplocal: cmd-exists-vagrant
 	vagrant ssh localvm
 
 ## 2️⃣️  (Inside 🎛 ) ⚙️  setup prerequisites on the local VM (should be done only once)
-setuplocal: ansible-setup localceosimage images tooling-setup
+setuplocal: ansible-setup localceosimage images tooling-setup ansible-folder
 
 ## 3️⃣️  (Inside 🎛 ) ▶️  launch lab on the local VM
 spinlocal: tinylabup 
@@ -255,9 +255,13 @@ labclean:
 
 ## Setup Ansible and Arista AVD Collection
 ansible-setup:
-	pip3 install ansible
+	pip3 install ansible ansible-pylibssh
 	pip3 install -r https://raw.githubusercontent.com/aristanetworks/ansible-avd/devel/ansible_collections/arista/avd/requirements.txt
 	ansible-galaxy collection install arista.avd
+
+## Initialize certificates to talk to EOS API
+ansible-initcert: guard-LAB
+	ansible-playbook -i clab-evpnlab/ansible-inventory.yml --extra-vars "ansible_user=admin ansible_password=admin ansible_connection=ansible.netcommon.network_cli ansible_network_os=arista.eos.eos"  playbook-eos-initcert.yml
 
 ## Check that you can communicate with all the nodes
 ansible-check: guard-LAB

@@ -1,4 +1,8 @@
 ---
+
+use_ssl: true
+validate_certs: false
+
 local_users:
   admin:
     privilege: 15

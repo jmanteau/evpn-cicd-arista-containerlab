@@ -8,7 +8,6 @@ all:
               hosts:
                 clab-evpnlab-spine1:
                 clab-evpnlab-spine2:
-
             DC1_L3_LEAFS:
               children:
                 DC1_LEAF1:
