@@ -1,0 +1,12 @@
+Node Type,Node,Node Interface,Peer Type,Peer,Peer Interface
+l3leaf,clab-evpnlab-leaf1,Ethernet1,spine,clab-evpnlab-spine1,Ethernet1
+l3leaf,clab-evpnlab-leaf1,Ethernet2,spine,clab-evpnlab-spine2,Ethernet1
+l3leaf,clab-evpnlab-leaf1,Ethernet3,server,h11,Eth1
+l3leaf,clab-evpnlab-leaf1,Ethernet4,server,h12,Eth1
+l3leaf,clab-evpnlab-leaf2,Ethernet1,spine,clab-evpnlab-spine1,Ethernet2
+l3leaf,clab-evpnlab-leaf2,Ethernet2,spine,clab-evpnlab-spine2,Ethernet2
+l3leaf,clab-evpnlab-leaf2,Ethernet3,server,h21,Eth1
+spine,clab-evpnlab-spine1,Ethernet1,l3leaf,clab-evpnlab-leaf1,Ethernet1
+spine,clab-evpnlab-spine1,Ethernet2,l3leaf,clab-evpnlab-leaf2,Ethernet1
+spine,clab-evpnlab-spine2,Ethernet1,l3leaf,clab-evpnlab-leaf1,Ethernet2
+spine,clab-evpnlab-spine2,Ethernet2,l3leaf,clab-evpnlab-leaf2,Ethernet2

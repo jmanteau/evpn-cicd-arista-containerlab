@@ -1,0 +1,289 @@
+router_bgp:
+  as: '65101'
+  router_id: 192.168.255.30
+  bgp_defaults:
+  - no bgp default ipv4-unicast
+  - distance bgp 20 200 200
+  - maximum-paths 4 ecmp 4
+  peer_groups:
+    IPv4-UNDERLAY-PEERS:
+      type: ipv4
+      password: AQQvKeimxJu+uGQ/yYvv9w==
+      maximum_routes: 12000
+      send_community: all
+    EVPN-OVERLAY-PEERS:
+      type: evpn
+      update_source: Loopback0
+      bfd: true
+      ebgp_multihop: '3'
+      password: q+VNViP5i4rVjW1cxFv2wA==
+      send_community: all
+      maximum_routes: 0
+  address_family_ipv4:
+    peer_groups:
+      IPv4-UNDERLAY-PEERS:
+        activate: true
+      EVPN-OVERLAY-PEERS:
+        activate: false
+  redistribute_routes:
+    connected:
+      route_map: RM-CONN-2-BGP
+  neighbors:
+    172.31.255.0:
+      peer_group: IPv4-UNDERLAY-PEERS
+      remote_as: '65001'
+      description: clab-evpnlab-spine1_Ethernet1
+    172.31.255.2:
+      peer_group: IPv4-UNDERLAY-PEERS
+      remote_as: '65001'
+      description: clab-evpnlab-spine2_Ethernet1
+    192.168.255.10:
+      peer_group: EVPN-OVERLAY-PEERS
+      description: clab-evpnlab-spine1
+      remote_as: '65001'
+    192.168.255.11:
+      peer_group: EVPN-OVERLAY-PEERS
+      description: clab-evpnlab-spine2
+      remote_as: '65001'
+  address_family_evpn:
+    peer_groups:
+      EVPN-OVERLAY-PEERS:
+        activate: true
+  vrfs:
+    Tenant_A_Zone:
+      router_id: 192.168.255.30
+      rd: 192.168.255.30:10
+      route_targets:
+        import:
+          evpn:
+          - '10:10'
+        export:
+          evpn:
+          - '10:10'
+      redistribute_routes:
+      - connected
+    Tenant_B_Zone:
+      router_id: 192.168.255.30
+      rd: 192.168.255.30:20
+      route_targets:
+        import:
+          evpn:
+          - '20:20'
+        export:
+          evpn:
+          - '20:20'
+      redistribute_routes:
+      - connected
+  vlan_aware_bundles:
+    Tenant_A_Zone:
+      rd: 192.168.255.30:10
+      route_targets:
+        both:
+        - '10:10'
+      redistribute_routes:
+      - learned
+      vlan: 110-111
+    Tenant_B_Zone:
+      rd: 192.168.255.30:20
+      route_targets:
+        both:
+        - '20:20'
+      redistribute_routes:
+      - learned
+      vlan: 210-211
+static_routes:
+- vrf: MGMT
+  destination_address_prefix: 0.0.0.0/0
+  gateway: 127.0.0.1
+service_routing_protocols_model: multi-agent
+ip_routing: true
+vlan_internal_order:
+  allocation: ascending
+  range:
+    beginning: 1006
+    ending: 1199
+name_server:
+  source:
+    vrf: MGMT
+  nodes:
+  - 1.1.1.1
+  - 8.8.8.8
+spanning_tree:
+  mode: mstp
+  mst_instances:
+    '0':
+      priority: 4096
+local_users:
+  admin:
+    privilege: 15
+    role: network-admin
+    sha512_password: $6$7GTxsrRjnwheeKfR$zhJ8qycVjAJz41rf5JRSfWIzp93IL5WL7sMS/Taz1yfShz.MAnoajCf7R2n1/EZW7PN5QA3Huayl0lVQesBYN1
+vrfs:
+  MGMT:
+    ip_routing: false
+  Tenant_A_Zone:
+    tenant: Tenant_A
+    ip_routing: true
+  Tenant_B_Zone:
+    tenant: Tenant_B
+    ip_routing: true
+management_interfaces:
+  Management0:
+    description: oob_management
+    shutdown: false
+    vrf: MGMT
+    ip_address: 172.100.100.4/24
+    gateway: 127.0.0.1
+    type: oob
+management_api_http:
+  enable_vrfs:
+    MGMT: {}
+  enable_https: true
+ethernet_interfaces:
+  Ethernet1:
+    peer: clab-evpnlab-spine1
+    peer_interface: Ethernet1
+    peer_type: spine
+    description: P2P_LINK_TO_CLAB-EVPNLAB-SPINE1_Ethernet1
+    mtu: 9000
+    type: routed
+    shutdown: false
+    ip_address: 172.31.255.1/31
+  Ethernet2:
+    peer: clab-evpnlab-spine2
+    peer_interface: Ethernet1
+    peer_type: spine
+    description: P2P_LINK_TO_CLAB-EVPNLAB-SPINE2_Ethernet1
+    mtu: 9000
+    type: routed
+    shutdown: false
+    ip_address: 172.31.255.3/31
+  Ethernet3:
+    peer: h11
+    peer_interface: Eth1
+    peer_type: server
+    description: h11_Eth1
+    type: switched
+    shutdown: false
+    mode: access
+    vlans: 110
+  Ethernet4:
+    peer: h12
+    peer_interface: Eth1
+    peer_type: server
+    description: h12_Eth1
+    type: switched
+    shutdown: false
+    mode: access
+    vlans: 111
+loopback_interfaces:
+  Loopback0:
+    description: EVPN_Overlay_Peering
+    shutdown: false
+    ip_address: 192.168.255.30/32
+  Loopback1:
+    description: VTEP_VXLAN_Tunnel_Source
+    shutdown: false
+    ip_address: 192.168.254.30/32
+  Loopback100:
+    description: Tenant_B_Zone_VTEP_DIAGNOSTICS
+    shutdown: false
+    vrf: Tenant_B_Zone
+    ip_address: 10.255.1.3/32
+prefix_lists:
+  PL-LOOPBACKS-EVPN-OVERLAY:
+    sequence_numbers:
+      10:
+        action: permit 192.168.255.0/24 eq 32
+      20:
+        action: permit 192.168.254.0/24 eq 32
+route_maps:
+  RM-CONN-2-BGP:
+    sequence_numbers:
+      10:
+        type: permit
+        match:
+        - ip address prefix-list PL-LOOPBACKS-EVPN-OVERLAY
+router_bfd:
+  multihop:
+    interval: 300
+    min_rx: 300
+    multiplier: 3
+vlans:
+  110:
+    tenant: Tenant_A
+    name: Tenant_A_Zone_1
+  111:
+    tenant: Tenant_A
+    name: Tenant_A_Zone_2
+  210:
+    tenant: Tenant_B
+    name: Tenant_A_Zone_3
+  211:
+    tenant: Tenant_B
+    name: Tenant_A_Zone_4
+ip_igmp_snooping:
+  globally_enabled: true
+ip_virtual_router_mac_address: 00:00:00:00:00:01
+vlan_interfaces:
+  Vlan110:
+    tenant: Tenant_A
+    tags:
+    - odd_network
+    - onehundred
+    description: Tenant_A_Zone_1
+    shutdown: false
+    vrf: Tenant_A_Zone
+    ip_address_virtual: 10.1.10.1/24
+  Vlan111:
+    tenant: Tenant_A
+    tags:
+    - even_network
+    - onehundred
+    description: Tenant_A_Zone_2
+    shutdown: false
+    vrf: Tenant_A_Zone
+    ip_address_virtual: 10.1.11.1/25
+  Vlan210:
+    tenant: Tenant_B
+    tags:
+    - odd_network
+    - twohundred
+    description: Tenant_A_Zone_3
+    shutdown: false
+    vrf: Tenant_B_Zone
+    ip_address_virtual: 10.2.10.1/26
+  Vlan211:
+    tenant: Tenant_B
+    tags:
+    - even_network
+    - twohundred
+    description: Tenant_A_Zone_4
+    shutdown: false
+    vrf: Tenant_B_Zone
+    ip_address_virtual: 10.2.11.1/27
+virtual_source_nat_vrfs:
+  Tenant_A_Zone:
+    ip_address: 10.255.1.3
+  Tenant_B_Zone:
+    ip_address: 10.255.1.3
+vxlan_interface:
+  Vxlan1:
+    description: clab-evpnlab-leaf1_VTEP
+    vxlan:
+      source_interface: Loopback1
+      udp_port: 4789
+      vlans:
+        110:
+          vni: 10110
+        111:
+          vni: 10111
+        210:
+          vni: 10210
+        211:
+          vni: 10211
+      vrfs:
+        Tenant_A_Zone:
+          vni: 10
+        Tenant_B_Zone:
+          vni: 20

@@ -6,9 +6,9 @@ cEOS-lab-*.tar.xz
 *.pyc
 .DS_Store
 .vscode
-ansible-tinylab/reports/
-ansible-tinylab/intended/
-ansible-tinylab/documentation/
+#ansible-tinylab/reports/
+#ansible-tinylab/intended/
+#ansible-tinylab/documentation/
 .evpnlab*.yaml
 .env
 .env_Makefile

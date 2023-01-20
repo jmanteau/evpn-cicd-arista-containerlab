@@ -1,0 +1,88 @@
+test_id,node,test_category,test_description,test,result,failure_reason
+1,clab-evpnlab-leaf1,NTP,Synchronised with NTP server,NTP,FAIL,not synchronised to NTP server
+2,clab-evpnlab-leaf2,NTP,Synchronised with NTP server,NTP,FAIL,not synchronised to NTP server
+3,clab-evpnlab-spine1,NTP,Synchronised with NTP server,NTP,FAIL,not synchronised to NTP server
+4,clab-evpnlab-spine2,NTP,Synchronised with NTP server,NTP,FAIL,not synchronised to NTP server
+5,clab-evpnlab-leaf1,Interface State,Ethernet Interface Status & Line Protocol == "up",Ethernet1 - P2P_LINK_TO_CLAB-EVPNLAB-SPINE1_Ethernet1,PASS
+6,clab-evpnlab-leaf1,Interface State,Ethernet Interface Status & Line Protocol == "up",Ethernet2 - P2P_LINK_TO_CLAB-EVPNLAB-SPINE2_Ethernet1,PASS
+7,clab-evpnlab-leaf1,Interface State,Ethernet Interface Status & Line Protocol == "up",Ethernet3 - h11_Eth1,PASS
+8,clab-evpnlab-leaf1,Interface State,Ethernet Interface Status & Line Protocol == "up",Ethernet4 - h12_Eth1,PASS
+9,clab-evpnlab-leaf2,Interface State,Ethernet Interface Status & Line Protocol == "up",Ethernet1 - P2P_LINK_TO_CLAB-EVPNLAB-SPINE1_Ethernet2,PASS
+10,clab-evpnlab-leaf2,Interface State,Ethernet Interface Status & Line Protocol == "up",Ethernet2 - P2P_LINK_TO_CLAB-EVPNLAB-SPINE2_Ethernet2,PASS
+11,clab-evpnlab-leaf2,Interface State,Ethernet Interface Status & Line Protocol == "up",Ethernet3 - h21_Eth1,PASS
+12,clab-evpnlab-spine1,Interface State,Ethernet Interface Status & Line Protocol == "up",Ethernet1 - P2P_LINK_TO_CLAB-EVPNLAB-LEAF1_Ethernet1,PASS
+13,clab-evpnlab-spine1,Interface State,Ethernet Interface Status & Line Protocol == "up",Ethernet2 - P2P_LINK_TO_CLAB-EVPNLAB-LEAF2_Ethernet1,PASS
+14,clab-evpnlab-spine2,Interface State,Ethernet Interface Status & Line Protocol == "up",Ethernet1 - P2P_LINK_TO_CLAB-EVPNLAB-LEAF1_Ethernet2,PASS
+15,clab-evpnlab-spine2,Interface State,Ethernet Interface Status & Line Protocol == "up",Ethernet2 - P2P_LINK_TO_CLAB-EVPNLAB-LEAF2_Ethernet2,PASS
+16,clab-evpnlab-leaf1,Interface State,Vlan Interface Status & Line Protocol == "up",Vlan110 - Tenant_A_Zone_1,PASS
+17,clab-evpnlab-leaf1,Interface State,Vlan Interface Status & Line Protocol == "up",Vlan111 - Tenant_A_Zone_2,PASS
+18,clab-evpnlab-leaf1,Interface State,Vlan Interface Status & Line Protocol == "up",Vlan210 - Tenant_A_Zone_3,PASS
+19,clab-evpnlab-leaf1,Interface State,Vlan Interface Status & Line Protocol == "up",Vlan211 - Tenant_A_Zone_4,PASS
+20,clab-evpnlab-leaf2,Interface State,Vlan Interface Status & Line Protocol == "up",Vlan110 - Tenant_A_Zone_1,PASS
+21,clab-evpnlab-leaf2,Interface State,Vlan Interface Status & Line Protocol == "up",Vlan111 - Tenant_A_Zone_2,PASS
+22,clab-evpnlab-leaf1,Interface State,Vxlan Interface Status & Line Protocol == "up",Vxlan1,PASS
+23,clab-evpnlab-leaf2,Interface State,Vxlan Interface Status & Line Protocol == "up",Vxlan1,PASS
+24,clab-evpnlab-leaf1,Interface State,Loopback Interface Status & Line Protocol == "up",Loopback0 - EVPN_Overlay_Peering,PASS
+25,clab-evpnlab-leaf1,Interface State,Loopback Interface Status & Line Protocol == "up",Loopback1 - VTEP_VXLAN_Tunnel_Source,PASS
+26,clab-evpnlab-leaf1,Interface State,Loopback Interface Status & Line Protocol == "up",Loopback100 - Tenant_B_Zone_VTEP_DIAGNOSTICS,PASS
+27,clab-evpnlab-leaf2,Interface State,Loopback Interface Status & Line Protocol == "up",Loopback0 - EVPN_Overlay_Peering,PASS
+28,clab-evpnlab-leaf2,Interface State,Loopback Interface Status & Line Protocol == "up",Loopback1 - VTEP_VXLAN_Tunnel_Source,PASS
+29,clab-evpnlab-leaf2,Interface State,Loopback Interface Status & Line Protocol == "up",Loopback100 - Tenant_A_Zone_VTEP_DIAGNOSTICS,PASS
+30,clab-evpnlab-spine1,Interface State,Loopback Interface Status & Line Protocol == "up",Loopback0 - EVPN_Overlay_Peering,PASS
+31,clab-evpnlab-spine2,Interface State,Loopback Interface Status & Line Protocol == "up",Loopback0 - EVPN_Overlay_Peering,PASS
+32,clab-evpnlab-leaf1,LLDP Topology,lldp topology - validate peer and interface,local: Ethernet1 - remote: clab-evpnlab-spine1_Ethernet1,PASS
+33,clab-evpnlab-leaf1,LLDP Topology,lldp topology - validate peer and interface,local: Ethernet2 - remote: clab-evpnlab-spine2_Ethernet1,PASS
+34,clab-evpnlab-leaf2,LLDP Topology,lldp topology - validate peer and interface,local: Ethernet1 - remote: clab-evpnlab-spine1_Ethernet2,PASS
+35,clab-evpnlab-leaf2,LLDP Topology,lldp topology - validate peer and interface,local: Ethernet2 - remote: clab-evpnlab-spine2_Ethernet2,PASS
+36,clab-evpnlab-spine1,LLDP Topology,lldp topology - validate peer and interface,local: Ethernet1 - remote: clab-evpnlab-leaf1_Ethernet1,PASS
+37,clab-evpnlab-spine1,LLDP Topology,lldp topology - validate peer and interface,local: Ethernet2 - remote: clab-evpnlab-leaf2_Ethernet1,PASS
+38,clab-evpnlab-spine2,LLDP Topology,lldp topology - validate peer and interface,local: Ethernet1 - remote: clab-evpnlab-leaf1_Ethernet2,PASS
+39,clab-evpnlab-spine2,LLDP Topology,lldp topology - validate peer and interface,local: Ethernet2 - remote: clab-evpnlab-leaf2_Ethernet2,PASS
+40,clab-evpnlab-leaf1,IP Reachability,ip reachability test p2p links,Source: clab-evpnlab-leaf1_Ethernet1 - Destination: clab-evpnlab-spine1_Ethernet1,PASS
+41,clab-evpnlab-leaf1,IP Reachability,ip reachability test p2p links,Source: clab-evpnlab-leaf1_Ethernet2 - Destination: clab-evpnlab-spine2_Ethernet1,PASS
+42,clab-evpnlab-leaf2,IP Reachability,ip reachability test p2p links,Source: clab-evpnlab-leaf2_Ethernet1 - Destination: clab-evpnlab-spine1_Ethernet2,PASS
+43,clab-evpnlab-leaf2,IP Reachability,ip reachability test p2p links,Source: clab-evpnlab-leaf2_Ethernet2 - Destination: clab-evpnlab-spine2_Ethernet2,PASS
+44,clab-evpnlab-spine1,IP Reachability,ip reachability test p2p links,Source: clab-evpnlab-spine1_Ethernet1 - Destination: clab-evpnlab-leaf1_Ethernet1,PASS
+45,clab-evpnlab-spine1,IP Reachability,ip reachability test p2p links,Source: clab-evpnlab-spine1_Ethernet2 - Destination: clab-evpnlab-leaf2_Ethernet1,PASS
+46,clab-evpnlab-spine2,IP Reachability,ip reachability test p2p links,Source: clab-evpnlab-spine2_Ethernet1 - Destination: clab-evpnlab-leaf1_Ethernet2,PASS
+47,clab-evpnlab-spine2,IP Reachability,ip reachability test p2p links,Source: clab-evpnlab-spine2_Ethernet2 - Destination: clab-evpnlab-leaf2_Ethernet2,PASS
+48,clab-evpnlab-leaf1,BGP,ArBGP is configured and operating,ArBGP,PASS
+49,clab-evpnlab-leaf2,BGP,ArBGP is configured and operating,ArBGP,PASS
+50,clab-evpnlab-spine1,BGP,ArBGP is configured and operating,ArBGP,PASS
+51,clab-evpnlab-spine2,BGP,ArBGP is configured and operating,ArBGP,PASS
+52,clab-evpnlab-leaf1,BGP,ip bgp peer state established (ipv4),bgp_neighbor: 172.31.255.0,PASS
+53,clab-evpnlab-leaf1,BGP,ip bgp peer state established (ipv4),bgp_neighbor: 172.31.255.2,PASS
+54,clab-evpnlab-leaf2,BGP,ip bgp peer state established (ipv4),bgp_neighbor: 172.31.255.4,PASS
+55,clab-evpnlab-leaf2,BGP,ip bgp peer state established (ipv4),bgp_neighbor: 172.31.255.6,PASS
+56,clab-evpnlab-spine1,BGP,ip bgp peer state established (ipv4),bgp_neighbor: 172.31.255.1,PASS
+57,clab-evpnlab-spine1,BGP,ip bgp peer state established (ipv4),bgp_neighbor: 172.31.255.5,PASS
+58,clab-evpnlab-spine2,BGP,ip bgp peer state established (ipv4),bgp_neighbor: 172.31.255.3,PASS
+59,clab-evpnlab-spine2,BGP,ip bgp peer state established (ipv4),bgp_neighbor: 172.31.255.7,PASS
+60,clab-evpnlab-leaf1,BGP,bgp evpn peer state established (evpn),bgp_neighbor: 192.168.255.10,PASS
+61,clab-evpnlab-leaf1,BGP,bgp evpn peer state established (evpn),bgp_neighbor: 192.168.255.11,PASS
+62,clab-evpnlab-leaf2,BGP,bgp evpn peer state established (evpn),bgp_neighbor: 192.168.255.10,PASS
+63,clab-evpnlab-leaf2,BGP,bgp evpn peer state established (evpn),bgp_neighbor: 192.168.255.11,PASS
+64,clab-evpnlab-spine1,BGP,bgp evpn peer state established (evpn),bgp_neighbor: 192.168.255.30,PASS
+65,clab-evpnlab-spine1,BGP,bgp evpn peer state established (evpn),bgp_neighbor: 192.168.255.31,PASS
+66,clab-evpnlab-spine2,BGP,bgp evpn peer state established (evpn),bgp_neighbor: 192.168.255.30,PASS
+67,clab-evpnlab-spine2,BGP,bgp evpn peer state established (evpn),bgp_neighbor: 192.168.255.31,PASS
+68,clab-evpnlab-leaf1,Routing Table,Remote Lo1 address,192.168.254.30,PASS
+69,clab-evpnlab-leaf1,Routing Table,Remote Lo1 address,192.168.254.31,PASS
+70,clab-evpnlab-leaf2,Routing Table,Remote Lo1 address,192.168.254.30,PASS
+71,clab-evpnlab-leaf2,Routing Table,Remote Lo1 address,192.168.254.31,PASS
+72,clab-evpnlab-leaf1,Routing Table,Remote Lo0 address,192.168.255.30,PASS
+73,clab-evpnlab-leaf1,Routing Table,Remote Lo0 address,192.168.255.31,PASS
+74,clab-evpnlab-leaf2,Routing Table,Remote Lo0 address,192.168.255.30,PASS
+75,clab-evpnlab-leaf2,Routing Table,Remote Lo0 address,192.168.255.31,PASS
+76,clab-evpnlab-spine1,Routing Table,Remote Lo0 address,192.168.255.30,PASS
+77,clab-evpnlab-spine1,Routing Table,Remote Lo0 address,192.168.255.31,PASS
+78,clab-evpnlab-spine2,Routing Table,Remote Lo0 address,192.168.255.30,PASS
+79,clab-evpnlab-spine2,Routing Table,Remote Lo0 address,192.168.255.31,PASS
+80,clab-evpnlab-leaf1,Loopback0 Reachability,Loopback0 Reachability,Source: clab-evpnlab-leaf1 - 192.168.255.30 Destination: 192.168.255.30,PASS
+81,clab-evpnlab-leaf1,Loopback0 Reachability,Loopback0 Reachability,Source: clab-evpnlab-leaf1 - 192.168.255.30 Destination: 192.168.255.31,PASS
+82,clab-evpnlab-leaf2,Loopback0 Reachability,Loopback0 Reachability,Source: clab-evpnlab-leaf2 - 192.168.255.31 Destination: 192.168.255.30,PASS
+83,clab-evpnlab-leaf2,Loopback0 Reachability,Loopback0 Reachability,Source: clab-evpnlab-leaf2 - 192.168.255.31 Destination: 192.168.255.31,PASS
+84,clab-evpnlab-spine1,Loopback0 Reachability,Loopback0 Reachability,Source: clab-evpnlab-spine1 - 192.168.255.10 Destination: 192.168.255.30,PASS
+85,clab-evpnlab-spine1,Loopback0 Reachability,Loopback0 Reachability,Source: clab-evpnlab-spine1 - 192.168.255.10 Destination: 192.168.255.31,PASS
+86,clab-evpnlab-spine2,Loopback0 Reachability,Loopback0 Reachability,Source: clab-evpnlab-spine2 - 192.168.255.11 Destination: 192.168.255.30,PASS
+87,clab-evpnlab-spine2,Loopback0 Reachability,Loopback0 Reachability,Source: clab-evpnlab-spine2 - 192.168.255.11 Destination: 192.168.255.31,PASS

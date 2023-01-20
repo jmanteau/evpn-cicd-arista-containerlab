@@ -1,0 +1,5 @@
+Type, Node,Node Interface,Leaf IP Address,Peer Type,Peer Node,Peer Interface,Peer IP Address
+l3leaf,clab-evpnlab-leaf1,Ethernet1,172.31.255.1/31,spine,clab-evpnlab-spine1,Ethernet1,172.31.255.0/31
+l3leaf,clab-evpnlab-leaf1,Ethernet2,172.31.255.3/31,spine,clab-evpnlab-spine2,Ethernet1,172.31.255.2/31
+l3leaf,clab-evpnlab-leaf2,Ethernet1,172.31.255.5/31,spine,clab-evpnlab-spine1,Ethernet2,172.31.255.4/31
+l3leaf,clab-evpnlab-leaf2,Ethernet2,172.31.255.7/31,spine,clab-evpnlab-spine2,Ethernet2,172.31.255.6/31

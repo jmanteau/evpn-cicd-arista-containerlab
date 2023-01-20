@@ -10,6 +10,7 @@
 
     - name: deploy configuration via eAPI
       ignore_errors: True
+      validate_certs: no
       import_role:
         name: arista.avd.eos_config_deploy_eapi
 
