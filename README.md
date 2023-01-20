@@ -50,6 +50,8 @@ sudo yum install -y git
 git clone https://github.com/jmanteau/evpn-cicd-arista-containerlab.git
 cd evpn-cicd-arista-containerlab/
 cp .env.template .env
+make aws-install
+source ~/.bash_profile && source ~/.bashrc
 make setupaws && make netbox-start && sleep 90 && make netbox-provision
 
 ```

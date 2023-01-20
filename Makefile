@@ -84,8 +84,11 @@ vagrantinstall: cmd-exists-vagrant
 ## 1️⃣️  (Laptop 👨‍💻) 🔓 login on AWS and launch the AWS instance
 startupaws: awslogin awsvmup
 
-## 2️⃣️  (Inside 🎛 ) ⚙️  setup prerequisites on the AWS instance (should be done only once)
-setupaws: awssetup python-setup ansible-setup awsceosimage images tooling-setup
+## 2️⃣️ -1️⃣ (Inside 🎛 ) ⚙️  setup package and python prerequisites on the AWS instance (should be done only once)
+aws-install: aws-required python-setup
+
+## 2️⃣️ -2️⃣ (Inside 🎛 ) ⚙️  setup Ansible and image prerequisites on the AWS instance (should be done only once)
+setupaws: ansible-setup awsceosimage images tooling-setup ansible-folder
 
 ## 3️⃣️  (Inside 🎛 ) ▶️  launch lab on the AWS instance
 spinaws: labup 
@@ -110,7 +113,7 @@ startuplocal: cmd-exists-vagrant
 	vagrant ssh localvm
 
 ## 2️⃣️  (Inside 🎛 ) ⚙️  setup prerequisites on the local VM (should be done only once)
-setuplocal: ansible-setup localceosimage images tooling-setup
+setuplocal: ansible-setup localceosimage images tooling-setup ansible-folder
 
 ## 3️⃣️  (Inside 🎛 ) ▶️  launch lab on the local VM
 spinlocal: tinylabup 
@@ -132,9 +135,8 @@ connectlocal:
 
 ## -- AWS Setup --
 
-
 ## Setup the packages needed on the AWS VM
-awssetup: 
+aws-required: 
 	# Docker install
 	sudo amazon-linux-extras install -y docker
 	sudo service docker start
@@ -165,15 +167,15 @@ else
 	~/.pyenv/bin/pyenv install 3.11.1  
 	~/.pyenv/bin/pyenv global 3.11 
 	sudo update-alternatives --install /usr/bin/python3 python3 ~/.pyenv/shims/python3.11 1
-	echo 'export PATH="~/.pyenv/bin:$$PATH"' >> ~/.bashrc
-	echo 'export PYENV_ROOT="~/.pyenv"' >> ~/.bash_profile
 	echo 'export PATH="~/.pyenv/bin:$$PATH"' >> ~/.bash_profile
-	echo 'eval "$(pyenv init -)"' >> ~/.bashrc
+	echo 'eval "$$(pyenv init --path)"' >> ~/.bash_profile
+	echo 'export PATH="~/.pyenv/bin:$$PATH"' >> ~/.bashrc
+	echo 'eval "$$(pyenv init --path)"' >> ~/.bashrc
 	. ~/.bash_profile
 	. ~/.bashrc
-	exec "/bin/bash"
+	#exec "/bin/bash"
 endif
-	
+
 zsh:
 	zsh
 
@@ -253,9 +255,13 @@ labclean:
 
 ## Setup Ansible and Arista AVD Collection
 ansible-setup:
-	pip3 install ansible
+	pip3 install ansible ansible-pylibssh
 	pip3 install -r https://raw.githubusercontent.com/aristanetworks/ansible-avd/devel/ansible_collections/arista/avd/requirements.txt
 	ansible-galaxy collection install arista.avd
+
+## Initialize certificates to talk to EOS API
+ansible-initcert: guard-LAB
+	ansible-playbook -i clab-evpnlab/ansible-inventory.yml --extra-vars "ansible_user=admin ansible_password=admin ansible_connection=ansible.netcommon.network_cli ansible_network_os=arista.eos.eos"  playbook-eos-initcert.yml
 
 ## Check that you can communicate with all the nodes
 ansible-check: guard-LAB

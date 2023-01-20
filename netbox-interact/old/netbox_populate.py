@@ -906,9 +906,7 @@ def provision_bgp() -> None:
                     name=data['params']['p2p_remote_device'])).id,
                 BGP_address_family=data['group_peer'].split('-')[0].capitalize(),
                 BGP_next_hop_self=False if 'next_hop_self' not in data['params'] else data['params']['next_hop_self'],
-                BGP_next_hop_unchanged=False if 'next_hop_unchanged' not in data['params'] else data['params']
-                ['next_hop_unchanged'],
-                BGP_session_pwd=data['params']['p2p_password_peer'] if 'p2p_password_peer' in data['params'] else None
+                BGP_next_hop_unchanged=False if 'next_hop_unchanged' not in data['params'] else data['params']['next_hop_unchanged']
             ))
         site = operator.attrgetter('dcim.devices')(nb).get(**dict(name=data['device'])).site
         local_address_id = x_session['local_address']
@@ -1000,15 +998,12 @@ def provision_bgp() -> None:
                                                                          )
                     network = ipaddress.ip_network(str(peer_neighbor), strict=False)
                     role = str(operator.attrgetter('ipam.prefixes')(nb).get(**dict(prefix=str(network))).role)
-                    password = [x['ipv4-underlay-peers'][0]['password'] for x in local_ctx[device['host']]['bgp']
-                            if 'ipv4-underlay-peers' in x][0]
                     if peer_neighbor and role != 'mlag-keepalive':
                         bgp_tables.append(dict(
                             device=device['host'], params={'p2p_int_local': str(intf), 'p2p_remote_int': intf_neighbor,
                                                            'p2p_remote_peer': str(peer_neighbor),
                                                            'p2p_remote_device': rem_device,
                                                            'p2p_remote_asn': asn_neighbor,
-                                                           'p2p_password_peer': password if password else None
                                                            },
                             group_peer='ipv4-underlay-peers'
                         )
@@ -1033,14 +1028,11 @@ def provision_bgp() -> None:
                     next_hop_unchanged=all([str(intf.device.device_role)=='spine',
                                             str(intf.connected_endpoints[0].device.device_role)=='leaf']
                                            )
-                    password = [x['evpn-overlay-peers'][0]['password'] for x in local_ctx[device['host']]['bgp']
-                                if 'evpn-overlay-peers' in x][0]
                     bgp_tables.append(dict(
                         device=device['host'], params={'p2p_int_local': "Loopback0", 'p2p_remote_int': "Loopback0",
                                                        'p2p_remote_peer': str(peer_neighbor),
                                                        'p2p_remote_device': rem_device,
                                                        'p2p_remote_asn': asn_neighbor,
-                                                       'p2p_password_peer': password if password else None,
                                                        'next_hop_unchanged':True if next_hop_unchanged is True else False
                                                        }
                             ,
@@ -1161,23 +1153,7 @@ def provision_bgp() -> None:
             type="select",
             choices=["attached-host", "bgp", "connected", "dynamic", "isis", "ospf", "ospfv3", "rip", "static"]
         )
-        cf_bgp_sessions_pwd = get_or_create(
-            operator.attrgetter('extras.custom-fields')(nb),
-            search="name",
-            name="BGP_session_pw",
-            content_types=["netbox_bgp.bgpsession"],
-            label= "Password",
-            type="text"
-        )
 
-        cf_bgp_peergroup_pwd = get_or_create(
-            operator.attrgetter('extras.custom-fields')(nb),
-            search="name",
-            name="BGP_peer_group_pw",
-            content_types=["netbox_bgp.bgppeergroup"],
-            label= "Password",
-            type="text"
-        )
         # cf_bgp_routemapin = get_or_create(
         #     operator.attrgetter('extras.custom-fields')(nb),
         #     search="name",
@@ -1202,9 +1178,7 @@ def provision_bgp() -> None:
                                                                        )
         if not operator.attrgetter('plugins.bgp.bgppeergroup')(nb).get(**dict(name='evpn-overlay-peers')):
             operator.attrgetter('plugins.bgp.bgppeergroup')(nb).create(dict(name='evpn-overlay-peers',
-                                                                            description='evpn-overlay-peers',
-                                                                            )
-                                                                       )
+                                                                            description='evpn-overlay-peers'))
 
         if not operator.attrgetter('plugins.bgp.bgppeergroup')(nb).get(**dict(name='ipv4-mlag-peering')):
             operator.attrgetter('plugins.bgp.bgppeergroup')(nb).create(dict(name='ipv4-mlag-peering',
@@ -1212,6 +1186,15 @@ def provision_bgp() -> None:
 
         for data in bgp_params[0]:
             create_session(data)
+    # ###endpoint is missing, wait updates from repo
+    # operator.attrgetter('plugins.bgp.prefix-list')(nb).create(dict(name='pl-loopbacks-evpn-overlay2',
+    #                                                                description='pl-loopbacks-evpn-overlay',
+    #                                                                family_id="")
+    #                                                           )
+    #
+    # operator.attrgetter('plugins.bgp.routing-policy')(nb).create(dict(name='rm-conn-2-bgp', description='rm-conn-2-bgp')
+    #                                                              )
+
 
 def provision_rir_aggregates() -> None:
     process_json()
@@ -1715,158 +1698,96 @@ def provision_overlay() -> None:
                 )
 
 
-# def provision_bgp_policies() -> None:
-#     #pending method, create PR to improve netbox_bgp
-#     def get_index():
-#         return [*range(10,200,10)]
-#
-#     # prefix_dict={}
-#     _leafs=list(operator.attrgetter('dcim.devices')(nb).filter(**dict(role='leaf')))
-#     _spines=list(operator.attrgetter('dcim.devices')(nb).filter(**dict(role='spine')))
-#     for device in _leafs+_spines:
-#         # ip_addr_lo0,ip_addr_lo1=[operator.attrgetter('ipam.ip-addresses')(nb).get(**dict(device=str(device),
-#         #                                                                                 interface='Loopback0')),
-#         # operator.attrgetter('ipam.ip-addresses')(nb).get(**dict(device=str(device),
-#         #                                                         interface='Loopback1'))]
-#         # prefix_dict['pl-loopback-evpn-overlay']=dict()
-#         # index=get_index()
-#         #
-#         # if ip_addr_lo0:
-#         #     prefix_dict['pl-loopback-evpn-overlay'][f'{index.pop(0)}']={'action':'permit',
-#         #                                                                 'statements':f'{str(ip_addr_lo0)} eq 32'}
-#         # if ip_addr_lo1:
-#         #     prefix_dict['pl-loopback-evpn-overlay'][f'{index.pop(0)}']={'action':'permit',
-#         #                                                                 'statements':f'{str(ip_addr_lo1)} eq 32'}
-#
-#         local_ctx=device.local_context_data
-#         local_ctx['routing-policies']={'route-maps':{},'prefix_lists':{}}
-#         index=get_index()
-#         # local_ctx['routing-policies']['prefix_lists']['rm-conn-2-bgp']={f'{index.pop(0)}':{'action':'permit',
-#         #                                                                     'clause':'match',
-#         #                                                                     'prefix_lists':[prefix_dict]
-#         #                                                                     },
-#         #                                                               'redistribute':'connected',
-#         #                                                               }
-#         # parameters=all('parameters' in x for x in local_ctx['local-routing']['bgp'])
-#         for x in local_ctx['local-routing']['bgp']: parameters=True if 'parameters' in x else False
-#         if parameters is True:
-#             data=[dic for dic in local_ctx['local-routing']['bgp'] if 'parameters' in dic][0]
-#             connected=data['parameters']['redistribute']=='connected'
-#             if connected is False:
-#                 idx=local_ctx['local-routing']['bgp'].index(data)
-#                 local_ctx['local-routing']['bgp'][idx]['parameters'].update(dict(redistribute='connected'))
-#         else:
-#             local_ctx['local-routing']['bgp'].append({'parameters':{'redistribute':'connected'}
-#                                                }
-#                                                      )
-#         if device.virtual_chassis:
-#             index=get_index()
-#             local_ctx['routing-policies']['route-maps']['rm-mlag-peer-in']={f'{index.pop(0)}':{'action':'permit',
-#                                                                                   'clause':'set',
-#                                                                                   'statements':'origin incomplete',
-#                                                                                   'description':'prefer spines',
-#                                                                                   'session_in': 'ipv4-mlag-peering',
-#                                                                                   'session_out': None
-#                                                                                   },
-#                                                                             }
-#         device.update({'local_context_data':local_ctx})
-
 def provision_bgp_policies() -> None:
+    #pending method, create PR to improve netbox_bgp
     def get_index():
         return [*range(10,200,10)]
 
-    def create_routing_policies(x: str):
-        rmaps=(
-            tmp
-            if (tmp:= operator.attrgetter('plugins.bgp.routing-policy')(nb).get(**dict(name=x))) is not None
-            else operator.attrgetter('plugins.bgp.routing-policy')(nb).create(dict(name=x,
-                                                                                   description='description',
-                                                                                   family='ipv4p')))
-        return rmaps
-
-    def create_communities(asn: str, x: str):
-        community = (
-            tmp
-            if (tmp := operator.attrgetter('plugins.bgp.community')(nb).get(description=x,value=asn+':1')) is not None
-            else operator.attrgetter('plugins.bgp.community')(nb).create(dict(name=x,
-                                                                              description=x,
-                                                                              value=asn+':1'))
-        )
-        return community
-
+    # prefix_dict={}
     _leafs=list(operator.attrgetter('dcim.devices')(nb).filter(**dict(role='leaf')))
     _spines=list(operator.attrgetter('dcim.devices')(nb).filter(**dict(role='spine')))
-    for x in ['east-community','west-community','rm-mlag-peer-in']:
-        rmaps=create_routing_policies(x)
-        if rmaps:
-            index = get_index()
-            if x =='rm-mlag-peer-in':
-                params=dict(index=index[0],
-                            action='permit',
-                            set_actions=dict(originate="incomplete"),
-                            routing_policy=rmaps.id,
-                            description='description')
-                rule=(
-                    tmp
-                    if (tmp:= operator.attrgetter('plugins.bgp.routing-policy-rule')(nb).get(**params)) is not None
-                    else operator.attrgetter('plugins.bgp.routing-policy-rule')(nb).create(params)
-                )
+    for device in _leafs+_spines:
+        # ip_addr_lo0,ip_addr_lo1=[operator.attrgetter('ipam.ip-addresses')(nb).get(**dict(device=str(device),
+        #                                                                                 interface='Loopback0')),
+        # operator.attrgetter('ipam.ip-addresses')(nb).get(**dict(device=str(device),
+        #                                                         interface='Loopback1'))]
+        # prefix_dict['pl-loopback-evpn-overlay']=dict()
+        # index=get_index()
+        #
+        # if ip_addr_lo0:
+        #     prefix_dict['pl-loopback-evpn-overlay'][f'{index.pop(0)}']={'action':'permit',
+        #                                                                 'statements':f'{str(ip_addr_lo0)} eq 32'}
+        # if ip_addr_lo1:
+        #     prefix_dict['pl-loopback-evpn-overlay'][f'{index.pop(0)}']={'action':'permit',
+        #                                                                 'statements':f'{str(ip_addr_lo1)} eq 32'}
 
-                for device in _leafs+_spines:
-                    if device.virtual_chassis:
-                        bgp_sessions=operator.attrgetter('plugins.bgp.bgpsession')(nb).get(**dict(device_id=device.id,
-                                                                                                   name='ipv4-mlag-peering',
-                                                                                                   ))
-                        if bgp_sessions:
-                            bgp_sessions.update(dict(import_policies=[rmaps.id]))
-            elif 'community' in x:
-                if 'east' in x:
-                    asn_lst=list()
-                    for device in _leafs:
-                        if device.virtual_chassis:
-                            asn_lst.append(device.custom_fields['evpn_asn']['display'])
-                            asn=get_asn(str(device.custom_fields['evpn_asn']['display']))
-                            community=create_communities(asn,x)
-                else:
-                    for device in _leafs:
-                        if not device.virtual_chassis:
-                            asn=get_asn(str(device.custom_fields['evpn_asn']['display']))
-                            community=create_communities(asn,x)
-            print('stop')
+        local_ctx=device.local_context_data
+        local_ctx['routing-policies']={'route-maps':{},'prefix_lists':{}}
+        index=get_index()
+        # local_ctx['routing-policies']['prefix_lists']['rm-conn-2-bgp']={f'{index.pop(0)}':{'action':'permit',
+        #                                                                     'clause':'match',
+        #                                                                     'prefix_lists':[prefix_dict]
+        #                                                                     },
+        #                                                               'redistribute':'connected',
+        #                                                               }
+        # parameters=all('parameters' in x for x in local_ctx['local-routing']['bgp'])
+        for x in local_ctx['local-routing']['bgp']: parameters=True if 'parameters' in x else False
+        if parameters is True:
+            data=[dic for dic in local_ctx['local-routing']['bgp'] if 'parameters' in dic][0]
+            connected=data['parameters']['redistribute']=='connected'
+            if connected is False:
+                idx=local_ctx['local-routing']['bgp'].index(data)
+                local_ctx['local-routing']['bgp'][idx]['parameters'].update(dict(redistribute='connected'))
+        else:
+            local_ctx['local-routing']['bgp'].append({'parameters':{'redistribute':'connected'}
+                                               }
+                                                     )
+        if device.virtual_chassis:
+            index=get_index()
+            local_ctx['routing-policies']['route-maps']['rm-mlag-peer-in']={f'{index.pop(0)}':{'action':'permit',
+                                                                                  'clause':'set',
+                                                                                  'statements':'origin incomplete',
+                                                                                  'description':'prefer spines',
+                                                                                  'session_in': 'ipv4-mlag-peering',
+                                                                                  'session_out': None
+                                                                                  },
+                                                                            }
+        device.update({'local_context_data':local_ctx})
+
 
 
 def provision_all():
-    # provision_customfields()
-    #
-    # provision_orga()
-    #
-    # provision_config_context()
-    #
-    # provision_devices()
-    #
-    # provision_rir_aggregates()
-    #
-    # provision_asns()
-    #
-    # provision_networks()
-    #
-    # provision_management()
-    #
-    # provision_interfaces()
-    #
-    # provision_vlanintf()
-    #
-    # provision_assign_vlans()
-    #
-    # provision_hosts()
-    #
-    # provision_mlag()
-    #
-    # provision_fhrp_mlag()
-    #
-    # provision_bgp()
-    #
-    # provision_overlay()
+    provision_customfields()
+
+    provision_orga()
+
+    provision_config_context()
+
+    provision_devices()
+
+    provision_rir_aggregates()
+
+    provision_asns()
+
+    provision_networks()
+
+    provision_management()
+
+    provision_interfaces()
+
+    provision_vlanintf()
+
+    provision_assign_vlans()
+
+    provision_hosts()
+
+    provision_mlag()
+
+    provision_fhrp_mlag()
+
+    provision_bgp()
+
+    provision_overlay()
 
     provision_bgp_policies()
 

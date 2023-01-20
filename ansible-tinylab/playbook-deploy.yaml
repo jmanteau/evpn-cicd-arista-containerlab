@@ -1,19 +1,22 @@
 - name: Build Switch configuration
   hosts: DC1_FABRIC
+  collections:
+    - arista.avd
   tasks:
-
-
-    - name: generate device intended config and documention
-      tags: [build]
-      import_role:
-        name: arista.avd.eos_cli_config_gen
+#    - name: generate device intended config and documention
+#      tags: [build]
+#      import_role:
+#        name: eos_cli_config_gen
 
     - name: deploy configuration via eAPI
       ignore_errors: True
       validate_certs: no
       import_role:
-        name: arista.avd.eos_config_deploy_eapi
+        name: eos_config_deploy_eapi
+      vars:
+        eos_connection:
+          validate_certs: no
 
-    - name: audit fabric state using EOS eAPI connection
-      import_role: 
-        name: arista.avd.eos_validate_state
+#    - name: audit fabric state using EOS eAPI connection
+#      import_role: 
+#        name: eos_validate_state
